@@ -40,7 +40,7 @@ ve_banner() {
     in_giua ""
     
     # FIGLET ĐƯỢC CĂN GIỮA TRONG KHUNG BOX_WIDTH
-    figlet -c -f ASCII-Shadow -w $BOX_WIDTH "Termux-OS" | lolcat
+    figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" | lolcat
     
     in_giua ""
     in_giua "HỆ THỐNG: TRỰC TUYẾN  |  NGƯỜI DÙNG: ROOT"
