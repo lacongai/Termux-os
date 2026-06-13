@@ -1,4 +1,5 @@
-ZSH_THEME="Gấu Ngốc Nghếch"
+
+ZSH_THEME="henntaiiz"
 export ZSH=$HOME/.oh-my-zsh
 plugins=(git)
 
@@ -7,7 +8,7 @@ source $HOME/.oh-my-zsh/oh-my-zsh.sh
 [[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 clear
-echo -e "\033[1;32m[*] ĐANG KHỞI ĐỘNG TERMUX-OS v3..."
+echo -e "\033[1;32m[*] ĐANG KHỞI ĐỘNG TERMUX-OS v1..."
 echo -ne "\033[1;36m[ĐANG TẢI CÁC MÔ-ĐUN] \033[1;32m"
 for i in {1..25}; do
     echo -ne "█"
@@ -18,19 +19,19 @@ sleep 0.4
 clear
 
 
-ve_banner() {
+draw_banner() {
     local BOX_WIDTH=56
     local cyan='\033[0;36m'
     local reset='\033[0m'
     
-    in_giua() {
+    print_center() {
         local text="$1"
         local len=${#text}
         local space_len=$(( (BOX_WIDTH - 2 - len) / 2 ))
         printf "${cyan} ║%*s${reset}%s${cyan}%*s║${reset}\n" $space_len "" "$text" $(( BOX_WIDTH - 2 - len - space_len )) ""
     }
 
-    ve_duong_ke() {
+    draw_line() {
         local char=$1
         local end=$2
         printf "${cyan} %s" "$char"
@@ -38,18 +39,18 @@ ve_banner() {
         printf "%s${reset}\n" "$end"
     }
 
-    ve_duong_ke "╔" "╗"
-    in_giua ""
+    draw_line "╔" "╗"
+    print_center ""
     
-    # FIGLET ĐƯỢC CĂN GIỮA TRONG KHUNG BOX_WIDTH
+    # FIGLET CENTERED WITHIN BOX WIDTH
     figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" | lolcat
     
-    in_giua ""
-    in_giua "HỆ THỐNG: TRỰC TUYẾN  |  NGƯỜI DÙNG: ROOT"
-    in_giua "HĐH : Termux-OS"
-    in_giua "KẾT NỐI BẢO MẬT ĐÃ ĐƯỢC THIẾT LẬP"
-    in_giua ""
-    ve_duong_ke "╚" "╝"
+    print_center ""
+    print_center "HỆ THỐNG: TRỰC TUYẾN  |  NGƯỜI DÙNG: ROOT"
+    print_center "OS : Termux-OS v1"
+    print_center "KẾT NỐI BẢO MẬT ĐÃ ĐƯỢC THIẾT LẬP"
+    print_center ""
+    draw_line "╚" "╝"
 }
 
-ve_banner
+draw_banner
