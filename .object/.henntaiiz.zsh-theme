@@ -12,7 +12,7 @@ function parse_git_status() {
     fi
 }
 
-local user_info="%{$fg_bold[red]%}[%{$fg_bold[green]%}H4ck3r%{$fg_bold[red]%}@%{$fg_bold[white]%}termux%{$fg_bold[red]%}]"
+local user_info="%{$fg_bold[red]%}[%{$fg_bold[green]%}@henntaiiz%{$fg_bold[red]%}@%{$fg_bold[white]%}termux%{$fg_bold[red]%}]"
 local current_dir="%{$fg_bold[red]%}[%{$fg_bold[cyan]%}%(5~|%-1~/…/%2~|%4~)%{$fg_bold[red]%}]"
 local git_info='$(parse_git_status)'
 local status_arrow="%(?.%{$fg_bold[green]%}❯❯❯.%{$fg_bold[red]%}❯❯❯)"
