@@ -44,8 +44,8 @@ banner() {
     echo -e "${W}      --[ ${G}Công Cụ Tối Ưu Termux ${W}]--       "
     echo -e ""
     
-    echo -e "${R} [!]${W} Tác Giả  : ${C}Gấu Ngốc Nghếch (@henntaiiz)"
-    echo -e "${R} [!]${W} Phiên Bản : ${Y}v3.5 (Ổn Định)"
+    echo -e "${R} [!]${W} Author  : ${C}Gấu Ngốc Nghếch (henntaiiz)"
+    echo -e "${R} [!]${W} Version : ${Y}v1 (Stable)"
     echo -e "${R} [!]${W} Youtube : ${W}youtube.com/henntaiiz"
     echo -e "${R} [!]${W} GitHub  : ${W}github.com/lacongai"
     echo -e ""
@@ -56,24 +56,15 @@ banner() {
 
 banner
 
-# Hàm mở URL mà không cần Python
-mo_url() {
-    local url="https://youtube.com/@henntaiiz?sub_confirmation=1"
-    termux-open-url "$url" 2>/dev/null || am start -a android.intent.action.VIEW -d "$url" 2>/dev/null || true
-}
-
-# Chạy mở URL trong background
-mo_url &
-
-cai_dat_can_thiet() { apt update && apt upgrade; pkg install zsh git figlet toilet ruby wget curl -y; gem install lolcat; clear; cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; pkg install toilet figlet exa -y; cd ~/Termux-os/.object; rm -rf ~/.termux/colors.properties; rm -rf /data/data/com.termux/files/usr/etc/motd; cp -r .colors.properties ~/.termux/colors.properties; cp -r .termux.properties ~/.termux.properties; curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf; clear; cd ~/Termux-os ; bash os.sh; termux-open-url h4ck3r.me && termux-reload-settings; }
-thiet_lap_zsh() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh; }
-zsh_shell() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh; }
-bash_shell() { chsh -s bash; cd ~/Termux-os ; bash os.sh; }
-zsh_banner() { rm -rf ~/.zshrc; cd ~/Termux-os/.object; bash .2.sh; clear ; cd ~/Termux-os ; bash os.sh; }
-zsh_theme() { cd ~/Termux-os/.object; bash .1.sh; clear ; cd ~/Termux-os ; bash os.sh; }
-highlight_auto_suggest() { cd ~/Termux-os/.object; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear ; cd ~/Termux-os ; bash os.sh; }
-cap_nhat_script() { rm -rf ~/Termux-os; cd; git clone https://github.com/lacongai/Termux-os; cd ~/Termux-os ; bash os.sh; }
-them_khoa_cyber() {
+1line() { apt update && apt upgrade; pkg install zsh git figlet toilet ruby wget curl -y; gem install lolcat; clear; cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; pkg install toilet figlet exa -y; cd ~/Termux-os/.object; rm -rf ~/.termux/colors.properties; rm -rf /data/data/com.termux/files/usr/etc/motd; cp -r .colors.properties ~/.termux/colors.properties; cp -r .termux.properties ~/.termux.properties; curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf; clear; cd ~/Termux-os ; bash os.sh; termux-open-url h4ck3r.me && termux-reload-settings; }
+2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh; }
+3line() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh; }
+4line() { chsh -s bash; cd ~/Termux-os ; bash os.sh; }
+5line() { rm -rf ~/.zshrc; cd ~/Termux-os/.object; bash .2.sh; clear ; cd ~/Termux-os ; bash os.sh; }
+6line() { cd ~/Termux-os/.object; bash .1.sh; clear ; cd ~/Termux-os ; bash os.sh; }
+7line() { cd ~/Termux-os/.object; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear ; cd ~/Termux-os ; bash os.sh; }
+10line() { rm -rf ~/Termux-os; cd; git clone https://github.com/lacongai/Termux-os; cd ~/Termux-os ; bash os.sh; }
+8line() {
     echo -e "\n${C}Khởi tạo Giao thức Bảo mật...${RS}"
     echo -ne "${Y}Tạo Khóa Truy cập: ${RS}"
     read -s new_pass
@@ -92,7 +83,7 @@ while [ \$attempt -le 3 ]; do
     echo -e \"\n${C}╔══════════════════════════════════════╗\"
     echo -e \"║        ${R}TRUY CẬP SHELL BẢO MẬT           ${C}║\"
     echo -e \"╚══════════════════════════════════════╝${RS}\"
-    echo -ne \"${Y} [Lần thử \$attempt/3] Nhập Khóa: ${RS}\"
+    echo -ne \"${Y} [Attempt \$attempt/3] Enter Key: ${RS}\"
     read -s pass_input
     echo
     if [ \"\$pass_input\" = \"$new_pass\" ]; then
@@ -129,10 +120,10 @@ done
     menu
 }
 
-xoa_khoa() {
+9line() {
     sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.bashrc
     [ -f ~/.zshrc ] && sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.zshrc
-    echo -e "${R}Đã hủy kích hoạt Giao thức Bảo mật.${RS}"
+    echo -e "${R}Đã Đã hủy kích hoạt Giao thức Bảo mật.${RS}"
     sleep 2
     menu
 }
@@ -154,16 +145,16 @@ menu() {
     echo -ne "${left_pad}${C}Lựa chọn: ${RS}"
     read a
     case $a in
-        1|01) cai_dat_can_thiet ;;
-        2|02) thiet_lap_zsh ;;
-        3|03) zsh_shell ;;
-        4|04) bash_shell ;;
-        5|05) zsh_banner ;;
-        6|06) zsh_theme ;;
-        7|07) highlight_auto_suggest ;;
-        8|08) them_khoa_cyber ;;
-        9|09) xoa_khoa ;;
-        10) cap_nhat_script ;;
+        1|01) 1line ;;
+        2|02) 2line ;;
+        3|03) 3line ;;
+        4|04) 4line ;;
+        5|05) 5line ;;
+        6|06) 6line ;;
+        7|07) 7line ;;
+        8|08) 9line ;;   # This points to your Cyber Lock function
+        9|09) 10line ;;  # This points to your Remover function
+        10) 8line ;;     # This points to your Update function
         0|00) exit ;;
         *) menu ;;
     esac
