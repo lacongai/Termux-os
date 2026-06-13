@@ -1,0 +1,53 @@
+ZSH_THEME="Gấu Ngốc Nghếch"
+export ZSH=$HOME/.oh-my-zsh
+plugins=(git)
+
+source $HOME/.oh-my-zsh/oh-my-zsh.sh
+
+clear
+echo -e "\033[1;32m[*] ĐANG KHỞI ĐỘNG TERMUX-OS v3..."
+echo -ne "\033[1;36m[ĐANG TẢI CÁC MÔ-ĐUN] \033[1;32m"
+for i in {1..25}; do
+    echo -ne "█"
+    sleep 0.02
+done
+echo -e "\033[0m"
+sleep 0.4
+clear
+
+
+ve_banner() {
+    local BOX_WIDTH=56
+    local cyan='\033[0;36m'
+    local reset='\033[0m'
+    
+    in_giua() {
+        local text="$1"
+        local len=${#text}
+        local space_len=$(( (BOX_WIDTH - 2 - len) / 2 ))
+        printf "${cyan} ║%*s${reset}%s${cyan}%*s║${reset}\n" $space_len "" "$text" $(( BOX_WIDTH - 2 - len - space_len )) ""
+    }
+
+    ve_duong_ke() {
+        local char=$1
+        local end=$2
+        printf "${cyan} %s" "$char"
+        for ((i=0; i<BOX_WIDTH-2; i++)); do printf "═"; done
+        printf "%s${reset}\n" "$end"
+    }
+
+    ve_duong_ke "╔" "╗"
+    in_giua ""
+    
+    # FIGLET ĐƯỢC CĂN GIỮA TRONG KHUNG BOX_WIDTH
+    figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" | lolcat
+    
+    in_giua ""
+    in_giua "HỆ THỐNG: TRỰC TUYẾN  |  NGƯỜI DÙNG: ROOT"
+    in_giua "HĐH : Termux-OS v3"
+    in_giua "KẾT NỐI BẢO MẬT ĐÃ ĐƯỢC THIẾT LẬP"
+    in_giua ""
+    ve_duong_ke "╚" "╝"
+}
+
+ve_banner
