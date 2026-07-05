@@ -33,3 +33,5 @@ cd ~/Termux-os
 ```bash
 bash os.sh
 ```
+
+# Note: Trong file có ghi chú giải thích cách dùng đơn giản và từng mục do mình tách ra hiểu hay ko thì chịu
