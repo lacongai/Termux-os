@@ -19,4 +19,4 @@ local status_arrow="%(?.%{$fg_bold[green]%}❯❯❯.%{$fg_bold[red]%}❯❯❯)
 
 PROMPT="
 %{$fg_bold[red]%}╭═─༺𓆩✧𓆪༻─${user_info}─${current_dir}${git_info}
-%{$fg_bold[red]%}}╰═─༺𓆩✧𓆪༻─ ${status_arrow} %{$reset_color%}"
+%{$fg_bold[red]%}╰═─༺𓆩✧𓆪༻─ ${status_arrow} %{$reset_color%}"
