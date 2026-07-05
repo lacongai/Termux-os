@@ -251,7 +251,7 @@ _smart_accept_line() {
         local path="${trimmed%/}"
         path="${path/#\~/$HOME}"
         if [[ -d "$path" ]]; then
-            BUFFER="cd ${(q)path}"
+            BUFFER="${(q)path}"
             zle .accept-line
             return
         else
