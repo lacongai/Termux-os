@@ -28,7 +28,7 @@ git clone https://github.com/lacongai/Termux-os
 cd ~/Termux-os
 ```
 
-## 4. Tạo file os.sh mới (paste code bên dưới)
+## 4. Chạy lại file
 ```bash
 bash os.sh
 ```
