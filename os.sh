@@ -45,13 +45,48 @@ banner() {
     echo -e ""
     
     echo -e "${R} [!]${W} Author  : ${C}Gấu Ngốc Nghếch (henntaiiz)"
-    echo -e "${R} [!]${W} Version : ${Y}v2 (Stable)"
+    echo -e "${R} [!]${W} Version : ${Y}v1 (Stable)"
     echo -e "${R} [!]${W} Youtube : ${W}youtube.com/henntaiiz"
     echo -e "${R} [!]${W} GitHub  : ${W}github.com/lacongai"
     echo -e ""
     
     echo -e "${G} ==============================================${N}"
     echo -e ""
+}
+
+
+SMART_CONF="$HOME/.termux_os.conf"
+[ -f "$SMART_CONF" ] || echo "SMART_MODE=1" > "$SMART_CONF"
+. "$SMART_CONF"
+
+smart_exec() {
+cmd="$1"
+[ "$SMART_MODE" != "1" ] && { eval "$cmd"; return; }
+case "$cmd" in
+cd\ *|python\ *|bash\ *|sh\ *|pkg\ *|apt\ *|git\ *|ls*|clear|exit)
+eval "$cmd"; return;;
+esac
+if [ -d "$cmd" ]; then
+cd "$cmd"; return
+fi
+if [ -f "$cmd" ]; then
+case "${cmd##*.}" in
+py) python "$cmd";;
+sh) bash "$cmd";;
+js) node "$cmd";;
+php) php "$cmd";;
+lua) lua "$cmd";;
+rb) ruby "$cmd";;
+pl) perl "$cmd";;
+go) go run "$cmd";;
+c) o="${cmd%.c}"; gcc "$cmd" -o "$o" && "./$o";;
+cpp|cc|cxx) o="${cmd%.*}"; g++ "$cmd" -o "$o" && "./$o";;
+json) cat "$cmd";;
+*) eval "$cmd";;
+esac
+return
+fi
+eval "$cmd"
 }
 
 banner
@@ -64,7 +99,6 @@ banner
 6line() { cd ~/Termux-os/.object; bash .1.sh; clear ; cd ~/Termux-os ; bash os.sh; }
 7line() { cd ~/Termux-os/.object; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear ; cd ~/Termux-os ; bash os.sh; }
 10line() { rm -rf ~/Termux-os; cd; git clone https://github.com/lacongai/Termux-os; cd ~/Termux-os ; bash os.sh; }
-
 8line() {
     echo -e "\n${C}Khởi tạo Giao thức Bảo mật...${RS}"
     echo -ne "${Y}Tạo Khóa Truy cập: ${RS}"
@@ -124,139 +158,11 @@ done
 9line() {
     sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.bashrc
     [ -f ~/.zshrc ] && sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.zshrc
-    echo -e "${R}Đã hủy kích hoạt Giao thức Bảo mật.${RS}"
+    echo -e "${R}Đã Đã hủy kích hoạt Giao thức Bảo mật.${RS}"
     sleep 2
     menu
 }
 
-# ==============================================
-# CHỨC NĂNG 11: MỞ THƯ MỤC (CD TỰ ĐỘNG)
-# ==============================================
-auto_cd() {
-    echo -e "\n${C}╔════════════════════════════════════════════╗${RS}"
-    echo -e "${C}║${W}  📂 MỞ THƯ MỤC - CD TỰ ĐỘNG            ${C}║${RS}"
-    echo -e "${C}╚════════════════════════════════════════════╝${RS}"
-    echo -e "${Y}💡 Dán đường dẫn (hỗ trợ cả có và không có khoảng cách)${RS}"
-    echo -e "${Y}   Ví dụ: /storage/emulated/0/Download/FreeFire/Bin Build Tools/${RS}"
-    echo -ne "\n${C}📂 Đường dẫn: ${RS}"
-    read -e dir_path
-    
-    dir_path=$(echo "$dir_path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    
-    if [ -z "$dir_path" ]; then
-        echo -e "${R}❌ Đường dẫn trống!${RS}"
-        sleep 1
-        menu
-        return
-    fi
-    
-    if [ -d "$dir_path" ]; then
-        cd "$dir_path"
-        echo -e "${G}✅ Đã vào: ${C}$(pwd)${RS}"
-        echo -e "\n${G}📂 Nội dung thư mục:${RS}"
-        ls -la --color=always | head -30
-        echo -e "\n${Y}💡 Tổng: $(ls -1 | wc -l) file/thư mục${RS}"
-    else
-        echo -e "${R}❌ Thư mục không tồn tại: ${Y}$dir_path${RS}"
-        echo -e "${Y}💡 Kiểm tra lại đường dẫn (phân biệt chữ hoa/thường)${RS}"
-    fi
-    echo -e "\n${C}Nhấn Enter để quay lại menu...${RS}"
-    read -r
-    menu
-}
-
-# ==============================================
-# CHỨC NĂNG 12: CHẠY FILE TỰ ĐỘNG (THEO ĐUÔI)
-# ==============================================
-auto_run() {
-    echo -e "\n${C}╔════════════════════════════════════════════╗${RS}"
-    echo -e "${C}║${W}  🚀 CHẠY FILE - TỰ ĐỘNG THEO ĐUÔI      ${C}║${RS}"
-    echo -e "${C}╚════════════════════════════════════════════╝${RS}"
-    echo -e "${Y}💡 Chỉ cần nhập tên file, tool tự động nhận biết đuôi:${RS}"
-    echo -e "${Y}   .py → python | .sh → bash | .js → node | .lua → lua${RS}"
-    echo -e "${Y}   .json → hiển thị | .txt/.md → xem nội dung${RS}"
-    echo -ne "\n${C}📄 Tên file: ${RS}"
-    read -e filename
-    
-    filename=$(echo "$filename" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    
-    if [ -z "$filename" ]; then
-        echo -e "${R}❌ Tên file trống!${RS}"
-        sleep 1
-        menu
-        return
-    fi
-    
-    if [ ! -f "$filename" ]; then
-        echo -e "${R}❌ File không tồn tại: ${Y}$filename${RS}"
-        echo -e "${Y}💡 Kiểm tra lại tên và thư mục hiện tại${RS}"
-        sleep 2
-        menu
-        return
-    fi
-    
-    extension="${filename##*.}"
-    
-    echo -e "\n${C}▶️ Đang chạy: ${W}$filename${RS}"
-    echo -e "${C}────────────────────────────────────────────${RS}"
-    
-    case "$extension" in
-        py)
-            echo -e "${G}🐍 Python:${RS}"
-            python "$filename"
-            ;;
-        sh|bash)
-            echo -e "${G}📜 Bash:${RS}"
-            bash "$filename"
-            ;;
-        js)
-            echo -e "${G}🟨 NodeJS:${RS}"
-            if command -v node &>/dev/null; then
-                node "$filename"
-            else
-                echo -e "${R}❌ Cần cài NodeJS: pkg install nodejs${RS}"
-            fi
-            ;;
-        json)
-            echo -e "${G}📋 JSON:${RS}"
-            if command -v jq &>/dev/null; then
-                cat "$filename" | jq '.' 2>/dev/null || cat "$filename"
-            else
-                cat "$filename"
-            fi
-            ;;
-        txt|md|log)
-            echo -e "${G}📄 Text:${RS}"
-            cat "$filename"
-            ;;
-        lua)
-            echo -e "${G}🔷 Lua:${RS}"
-            if command -v lua &>/dev/null; then
-                lua "$filename"
-            else
-                echo -e "${R}❌ Cần cài Lua: pkg install lua${RS}"
-            fi
-            ;;
-        *)
-            if head -n1 "$filename" | grep -q "#!/"; then
-                echo -e "${G}⚡ File thực thi:${RS}"
-                chmod +x "$filename"
-                ./"$filename"
-            else
-                echo -e "${Y}⚠️ Không xác định đuôi file: .$extension${RS}"
-                echo -e "${Y}💡 Thử chạy với bash:${RS}"
-                bash "$filename" 2>/dev/null || echo -e "${R}❌ Không thể chạy file này${RS}"
-            fi
-            ;;
-    esac
-    
-    echo -e "\n${C}────────────────────────────────────────────${RS}"
-    echo -e "${C}Nhấn Enter để quay lại menu...${RS}"
-    read -r
-    menu
-}
-
-# ===== MENU CHÍNH (ĐÃ THÊM 2 TÍNH NĂNG MỚI) =====
 menu() {
     banner
     printf "\n${left_pad}${C}[${W}01${C}]${G} Cài đặt Cần thiết"
@@ -269,8 +175,9 @@ menu() {
     printf "\n${left_pad}${C}[${W}08${C}]${B} Thêm Khóa Cyber ${R}(Bảo mật Cao)"
     printf "\n${left_pad}${C}[${W}09${C}]${R} Xóa Khóa"
     printf "\n${left_pad}${C}[${W}10${C}]${W} Cập nhật Script"
-    printf "\n${left_pad}${C}[${W}11${C}]${C} 📂 Mở thư mục (CD tự động)"
-    printf "\n${left_pad}${C}[${W}12${C}]${C} 🚀 Chạy file (Tự động theo đuôi)"
+    printf "\n${left_pad}${C}[${W}11${C}]${G} Bật Smart Mode"
+    printf "\n${left_pad}${C}[${W}12${C}]${R} Tắt Smart Mode"
+    printf "\n${left_pad}${C}[${W}13${C}]${Y} Smart Shell"
     printf "\n${left_pad}${C}[${W}00${C}]${R} Thoát Terminal\n\n"
     
     echo -ne "${left_pad}${C}Lựa chọn: ${RS}"
@@ -283,20 +190,14 @@ menu() {
         5|05) 5line ;;
         6|06) 6line ;;
         7|07) 7line ;;
-        8|08) 8line ;;
-        9|09) 9line ;;
-        10) 10line ;;
-        11) auto_cd ;;
-        12) auto_run ;;
+        8|08) 9line ;;   # This points to your Cyber Lock function
+        9|09) 10line ;;  # This points to your Remover function
+        10) 8line ;;     # This points to your Update function
+        11) echo SMART_MODE=1 > "$SMART_CONF"; menu ;;
+        12) echo SMART_MODE=0 > "$SMART_CONF"; menu ;;
+        13) while true; do printf 'Smart> '; read x||break; smart_exec "$x"; done ;;
         0|00) exit ;;
         *) menu ;;
     esac
 }
-
-# Tự động thêm vào .bashrc nếu chưa có
-if ! grep -q "bash ~/Termux-os/os.sh" ~/.bashrc 2>/dev/null; then
-    echo -e "\n# TỰ ĐỘNG CHẠY TOOL TERMUX-OS" >> ~/.bashrc
-    echo "bash ~/Termux-os/os.sh" >> ~/.bashrc
-fi
-
 menu
