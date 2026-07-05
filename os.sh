@@ -56,27 +56,7 @@ banner() {
 
 banner
 
-1line() { 
-    apt update && apt upgrade
-    pkg install zsh git figlet toilet ruby wget curl -y
-    gem install lolcat
-    clear
-    cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf
-    git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
-    pkg install toilet figlet exa -y
-    cd ~/Termux-os/.object
-    rm -rf ~/.termux/colors.properties
-    rm -rf /data/data/com.termux/files/usr/etc/motd
-    cp -r .colors.properties ~/.termux/colors.properties
-    cp -r .termux.properties ~/.termux.properties
-    curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf
-    rm -rf ~/.termux
-    rm -f ~/.termux.properties
-    clear
-    cd ~/Termux-os
-    bash os.sh
-    termux-open-url h4ck3r.me && termux-reload-settings
-}
+1line() { apt update && apt upgrade; pkg install zsh git figlet toilet ruby wget curl -y; gem install lolcat; clear; cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; pkg install toilet figlet exa -y; cd ~/Termux-os/.object; rm -rf ~/.termux/colors.properties; rm -rf /data/data/com.termux/files/usr/etc/motd; cp -r .colors.properties ~/.termux/colors.properties; cp -r .termux.properties ~/.termux.properties; curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf; clear; cd ~/Termux-os ; bash os.sh; termux-open-url h4ck3r.me && termux-reload-settings; }
 2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh; }
 3line() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh; }
 4line() { chsh -s bash; cd ~/Termux-os ; bash os.sh; }
@@ -85,7 +65,6 @@ banner
 7line() { cd ~/Termux-os/.object; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear ; cd ~/Termux-os ; bash os.sh; }
 10line() { rm -rf ~/Termux-os; cd; git clone https://github.com/lacongai/Termux-os; cd ~/Termux-os ; bash os.sh; }
 
-# ===== KHÓA CYBER =====
 8line() {
     echo -e "\n${C}Khởi tạo Giao thức Bảo mật...${RS}"
     echo -ne "${Y}Tạo Khóa Truy cập: ${RS}"
@@ -151,7 +130,7 @@ done
 }
 
 # ==============================================
-# TÍNH NĂNG 1: CD TỰ ĐỘNG (HỖ TRỢ KHOẢNG CÁCH)
+# CHỨC NĂNG 11: MỞ THƯ MỤC (CD TỰ ĐỘNG)
 # ==============================================
 auto_cd() {
     echo -e "\n${C}╔════════════════════════════════════════════╗${RS}"
@@ -179,6 +158,7 @@ auto_cd() {
         echo -e "\n${Y}💡 Tổng: $(ls -1 | wc -l) file/thư mục${RS}"
     else
         echo -e "${R}❌ Thư mục không tồn tại: ${Y}$dir_path${RS}"
+        echo -e "${Y}💡 Kiểm tra lại đường dẫn (phân biệt chữ hoa/thường)${RS}"
     fi
     echo -e "\n${C}Nhấn Enter để quay lại menu...${RS}"
     read -r
@@ -186,7 +166,7 @@ auto_cd() {
 }
 
 # ==============================================
-# TÍNH NĂNG 2: CHẠY FILE TỰ ĐỘNG (THEO ĐUÔI)
+# CHỨC NĂNG 12: CHẠY FILE TỰ ĐỘNG (THEO ĐUÔI)
 # ==============================================
 auto_run() {
     echo -e "\n${C}╔════════════════════════════════════════════╗${RS}"
@@ -194,6 +174,7 @@ auto_run() {
     echo -e "${C}╚════════════════════════════════════════════╝${RS}"
     echo -e "${Y}💡 Chỉ cần nhập tên file, tool tự động nhận biết đuôi:${RS}"
     echo -e "${Y}   .py → python | .sh → bash | .js → node | .lua → lua${RS}"
+    echo -e "${Y}   .json → hiển thị | .txt/.md → xem nội dung${RS}"
     echo -ne "\n${C}📄 Tên file: ${RS}"
     read -e filename
     
@@ -208,6 +189,7 @@ auto_run() {
     
     if [ ! -f "$filename" ]; then
         echo -e "${R}❌ File không tồn tại: ${Y}$filename${RS}"
+        echo -e "${Y}💡 Kiểm tra lại tên và thư mục hiện tại${RS}"
         sleep 2
         menu
         return
@@ -261,8 +243,9 @@ auto_run() {
                 chmod +x "$filename"
                 ./"$filename"
             else
-                echo -e "${Y}⚠️ Không xác định đuôi: .$extension${RS}"
-                bash "$filename" 2>/dev/null || echo -e "${R}❌ Không thể chạy${RS}"
+                echo -e "${Y}⚠️ Không xác định đuôi file: .$extension${RS}"
+                echo -e "${Y}💡 Thử chạy với bash:${RS}"
+                bash "$filename" 2>/dev/null || echo -e "${R}❌ Không thể chạy file này${RS}"
             fi
             ;;
     esac
@@ -273,12 +256,10 @@ auto_run() {
     menu
 }
 
-# ==============================================
-# MENU CHÍNH (ĐÃ GỘP 13 VÀO 1)
-# ==============================================
+# ===== MENU CHÍNH (ĐÃ THÊM 2 TÍNH NĂNG MỚI) =====
 menu() {
     banner
-    printf "\n${left_pad}${C}[${W}01${C}]${G} Cài đặt Cần thiết ${Y}(+ Reload tool)"
+    printf "\n${left_pad}${C}[${W}01${C}]${G} Cài đặt Cần thiết"
     printf "\n${left_pad}${C}[${W}02${C}]${G} Thiết lập Zsh"
     printf "\n${left_pad}${C}[${W}03${C}]${G} Shell Zsh"
     printf "\n${left_pad}${C}[${W}04${C}]${G} Shell Bash"
@@ -312,9 +293,7 @@ menu() {
     esac
 }
 
-# ==============================================
-# TỰ ĐỘNG CHẠY TOOL KHI MỞ TERMUX
-# ==============================================
+# Tự động thêm vào .bashrc nếu chưa có
 if ! grep -q "bash ~/Termux-os/os.sh" ~/.bashrc 2>/dev/null; then
     echo -e "\n# TỰ ĐỘNG CHẠY TOOL TERMUX-OS" >> ~/.bashrc
     echo "bash ~/Termux-os/os.sh" >> ~/.bashrc
