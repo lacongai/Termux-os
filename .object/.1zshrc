@@ -6,7 +6,7 @@ plugins=(git)
 source $HOME/.oh-my-zsh/oh-my-zsh.sh
 
 clear
-echo -e "\033[1;32m[*] ĐANG KHỞI ĐỘNG TERMUX-OS v1..."
+echo -e "\033[1;32m[*] ĐANG KHỞI ĐỘNG TERMUX-OS v2..."
 echo -ne "\033[1;36m[ĐANG TẢI CÁC MÔ-ĐUN] \033[1;32m"
 for i in {1..25}; do
     echo -ne "█"
@@ -42,7 +42,7 @@ draw_banner() {
     figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" | lolcat
     print_center ""
     print_center "HỆ THỐNG: TRỰC TUYẾN  |  NGƯỜI DÙNG: ROOT"
-    print_center "OS : Termux-OS v1"
+    print_center "OS : Termux-OS v2"
     print_center "KẾT NỐI BẢO MẬT ĐÃ ĐƯỢC THIẾT LẬP"
     print_center ""
     draw_line "╚" "╝"
@@ -54,32 +54,26 @@ draw_banner
 #  SMART MODE (by Termux-OS)
 #  Smart Path : dán đường dẫn (có/không có khoảng cách) → tự cd
 #  Smart Run  : nhập tên file.đuôi → tự chạy đúng lệnh
+#  Auto Install: lệnh chưa cài → tự hỏi cài qua pkg
 #  Lệnh thường: giữ nguyên hoàn toàn
 # ══════════════════════════════════════════════════════════
 
-# ── Màu sắc ────────────────────────────────────────────────
-_SR_LABEL='\033[1;96m'   # [Smart Run] / [Smart Path] — cyan
-_SR_FILE='\033[1;93m'    # tên file  — vàng
-_SR_CMD='\033[1;36m'     # lệnh thực thi — xanh cyan
-_SR_ERR='\033[1;31m'     # lỗi — đỏ
+_SR_LABEL='\033[1;96m'
+_SR_FILE='\033[1;93m'
+_SR_CMD='\033[1;36m'
+_SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
 # ── ZLE accept-line: bắt raw buffer TRƯỚC khi zsh word-split ──
-# Đây là cách duy nhất xử lý đường dẫn có khoảng cách.
 _smart_accept_line() {
     local buf="$BUFFER"
-
-    # Bỏ khoảng trắng đầu/cuối
     local trimmed="${buf#"${buf%%[! ]*}"}"
     trimmed="${trimmed%"${trimmed##*[! ]}"}"
 
-    # Smart Path: buffer bắt đầu bằng / hoặc ~/
     if [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
         local path="${trimmed%/}"
         path="${path/#\~/$HOME}"
-
         if [[ -d "$path" ]]; then
-            print -n "\n${_SR_LABEL}[Smart Path]${_SR_RST} cd ${_SR_FILE}\"${path}\"${_SR_RST}"
             BUFFER="cd ${(q)path}"
             zle .accept-line
             return
@@ -90,12 +84,115 @@ _smart_accept_line() {
         fi
     fi
 
-    # Không phải Smart Path → để zsh xử lý bình thường
     zle .accept-line
 }
 zle -N accept-line _smart_accept_line
 
-# ── command_not_found_handler: Smart Run ──────────────────
+# ── Auto Install ──────────────────────────────────────────
+_auto_install() {
+    local cmd="$1"
+    shift
+    local args=("$@")
+
+    local _AI_C='\033[1;96m'
+    local _AI_Y='\033[1;93m'
+    local _AI_G='\033[1;32m'
+    local _AI_R='\033[1;31m'
+    local _AI_W='\033[1;97m'
+    local _AI_RST='\033[0m'
+
+    if ! command -v pkg &>/dev/null; then
+        echo "command not found: $cmd"
+        return 127
+    fi
+
+    echo -e "${_AI_C}[Auto Install]${_AI_RST} ${_AI_W}'${cmd}'${_AI_RST} chưa được cài. Đang cài đặt ${_AI_Y}'${cmd}'${_AI_RST}..."
+
+    setopt LOCAL_OPTIONS
+    unsetopt NOTIFY
+
+    local log_file="/tmp/_termux_ai_$$.log"
+    local code_file="/tmp/_termux_ai_exit_$$.code"
+
+    ( pkg install -y "$cmd" &>"$log_file"; echo $? > "$code_file" ) &
+    local pkg_pid=$!
+
+    local -a frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local spin_i=1
+    while kill -0 "$pkg_pid" 2>/dev/null; do
+        printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$spin_i]}${_AI_RST} Đang cài đặt '${_AI_W}${cmd}${_AI_RST}'..."
+        spin_i=$(( spin_i % 10 + 1 ))
+        sleep 0.1
+    done
+    wait "$pkg_pid" 2>/dev/null
+    printf "\r\033[2K"
+
+    local install_status
+    install_status=$(cat "$code_file" 2>/dev/null)
+    rm -f "$log_file" "$code_file"
+
+    if [[ "$install_status" == "0" ]] && command -v "$cmd" &>/dev/null; then
+        echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${cmd}${_AI_RST}'"
+        "$cmd" "${args[@]}"
+        return $?
+    fi
+
+    echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang tìm gói thay thế..."
+    echo ""
+
+    local alt_list
+    alt_list=$(pkg search "$cmd" 2>/dev/null \
+        | grep -v "^Sorting\|^Full\|^N:\|^\s*$" \
+        | awk '{print $1}' \
+        | grep -i "$cmd" \
+        | head -5)
+
+    if [[ -n "$alt_list" ]]; then
+        echo -e "${_AI_Y}[Auto Install]${_AI_RST} Tìm thấy các gói liên quan:"
+        local idx=1
+        while IFS= read -r pkg_name; do
+            echo -e "  ${_AI_C}[${idx}]${_AI_RST} ${pkg_name}"
+            idx=$(( idx + 1 ))
+        done <<< "$alt_list"
+        echo ""
+        echo -ne "${_AI_Y}Chọn số để cài (Enter = bỏ qua): ${_AI_RST}"
+        read -r choice
+
+        if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 ]]; then
+            local selected
+            selected=$(echo "$alt_list" | sed -n "${choice}p")
+            if [[ -n "$selected" ]]; then
+                local log2="/tmp/_termux_ai2_$$.log"
+                local code2="/tmp/_termux_ai2_exit_$$.code"
+                ( pkg install -y "$selected" &>"$log2"; echo $? > "$code2" ) &
+                local pkg2_pid=$!
+                local spin2_i=1
+                while kill -0 "$pkg2_pid" 2>/dev/null; do
+                    printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$spin2_i]}${_AI_RST} Đang cài đặt '${_AI_W}${selected}${_AI_RST}'..."
+                    spin2_i=$(( spin2_i % 10 + 1 ))
+                    sleep 0.1
+                done
+                wait "$pkg2_pid" 2>/dev/null
+                printf "\r\033[2K"
+                rm -f "$log2" "$code2"
+
+                if command -v "$cmd" &>/dev/null; then
+                    echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${selected}${_AI_RST}'"
+                    "$cmd" "${args[@]}"
+                    return $?
+                else
+                    echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Vẫn không thể chạy '${cmd}' sau khi cài '${selected}'${_AI_RST}"
+                fi
+            fi
+        fi
+    else
+        echo -e "${_AI_R}[Auto Install]${_AI_RST} Không tìm thấy gói nào phù hợp cho '${_AI_W}${cmd}${_AI_RST}' trong Termux."
+    fi
+
+    return 127
+}
+
+# ── command_not_found_handler: Smart Run + Auto Install ───
 command_not_found_handler() {
     local filename="$1"
     local ext="${filename##*.}"
@@ -130,15 +227,16 @@ command_not_found_handler() {
                 echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}rustc ${filename} && ./${out}${_SR_RST}"
                 rustc "$filename" && "./$out"; return $? ;;
             *)
-                echo "command not found: $filename"
-                return 127 ;;
+                # đuôi không hỗ trợ → thử Auto Install
+                _auto_install "$@"; return $? ;;
         esac
         echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}${display_cmd}${_SR_RST}"
         $cmd "$filename"; return $?
     fi
 
-    echo "command not found: $filename"
-    return 127
+    # Auto Install: lệnh chưa cài
+    _auto_install "$@"
+    return $?
 }
 # ══════════════════════════════════════════════════════════
 #  END SMART MODE
