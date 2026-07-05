@@ -34,4 +34,4 @@ cd ~/Termux-os
 bash os.sh
 ```
 
-# Note: Trong file có ghi chú giải thích cách dùng đơn giản và từng mục do mình tách ra hiểu hay ko thì chịu
+### Note: Trong quá trình cài bị lỗi font chữ thì Lựa chọn: 1 để hết lỗi
