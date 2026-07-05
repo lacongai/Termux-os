@@ -21,7 +21,7 @@ draw_banner() {
     local BOX_WIDTH=56
     local cyan='\033[0;36m'
     local reset='\033[0m'
-    
+
     print_center() {
         local text="$1"
         local len=${#text}
@@ -39,10 +39,10 @@ draw_banner() {
 
     draw_line "╔" "╗"
     print_center ""
-    
+
     # FIGLET CENTERED WITHIN BOX WIDTH
     figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" | lolcat
-    
+
     print_center ""
     print_center "HỆ THỐNG: TRỰC TUYẾN  |  NGƯỜI DÙNG: ROOT"
     print_center "OS : Termux-OS v1"
@@ -52,3 +52,72 @@ draw_banner() {
 }
 
 draw_banner
+
+# ── SMART MODE (by Termux-OS) ───────────────────────────
+# Smart Path: chỉ cần dán đường dẫn → tự cd
+# Smart Run:  chỉ cần nhập tên file → tự chạy đúng lệnh
+# Lệnh thông thường: giữ nguyên, không thay đổi
+
+_smart_resolve_path() {
+    local raw="$1"
+    if [[ "$raw" == "~/"* ]]; then
+        raw="$HOME/${raw:2}"
+    elif [[ "$raw" == "~" ]]; then
+        raw="$HOME"
+    fi
+    printf '%s' "$raw"
+}
+
+# zsh hook: called when a command is not found
+command_not_found_handler() {
+    local input="$*"
+
+    # Smart Path: input bắt đầu bằng / hoặc ~/
+    if [[ "$input" == /* || "$input" == "~" || "$input" == "~/"* ]]; then
+        local path
+        path=$(_smart_resolve_path "${input%/}")
+        if [ -d "$path" ]; then
+            echo -e "\033[1;96m[Smart Path]\033[0m cd \"$path\""
+            cd "$path" || return 1
+            return 0
+        else
+            echo -e "\033[1;31m[Lỗi] Không tìm thấy thư mục: $path\033[0m"
+            return 1
+        fi
+    fi
+
+    # Smart Run: input là tên file có đuôi và file tồn tại
+    local filename="$input"
+    local ext="${filename##*.}"
+    if [[ "$filename" == *.* && "$filename" != *" "* && -f "$filename" ]]; then
+        case "$ext" in
+            py)   echo -e "\033[1;96m[Smart Run]\033[0m python $filename";      python "$filename";        return $? ;;
+            sh)   echo -e "\033[1;96m[Smart Run]\033[0m bash $filename";        bash "$filename";          return $? ;;
+            js)   echo -e "\033[1;96m[Smart Run]\033[0m node $filename";        node "$filename";          return $? ;;
+            ts)   echo -e "\033[1;96m[Smart Run]\033[0m npx ts-node $filename"; npx ts-node "$filename";   return $? ;;
+            php)  echo -e "\033[1;96m[Smart Run]\033[0m php $filename";         php "$filename";           return $? ;;
+            rb)   echo -e "\033[1;96m[Smart Run]\033[0m ruby $filename";        ruby "$filename";          return $? ;;
+            lua)  echo -e "\033[1;96m[Smart Run]\033[0m lua $filename";         lua "$filename";           return $? ;;
+            pl)   echo -e "\033[1;96m[Smart Run]\033[0m perl $filename";        perl "$filename";          return $? ;;
+            go)   echo -e "\033[1;96m[Smart Run]\033[0m go run $filename";      go run "$filename";        return $? ;;
+            java) local cls="${filename%.java}"
+                  echo -e "\033[1;96m[Smart Run]\033[0m javac $filename && java $cls"
+                  javac "$filename" && java "$cls";  return $? ;;
+            c)    local out="${filename%.c}"
+                  echo -e "\033[1;96m[Smart Run]\033[0m gcc $filename -o $out && ./$out"
+                  gcc "$filename" -o "$out" && "./$out"; return $? ;;
+            cpp)  local out="${filename%.cpp}"
+                  echo -e "\033[1;96m[Smart Run]\033[0m g++ $filename -o $out && ./$out"
+                  g++ "$filename" -o "$out" && "./$out"; return $? ;;
+            rs)   local out="${filename%.rs}"
+                  echo -e "\033[1;96m[Smart Run]\033[0m rustc $filename && ./$out"
+                  rustc "$filename" && "./$out"; return $? ;;
+            r|R)  echo -e "\033[1;96m[Smart Run]\033[0m Rscript $filename";     Rscript "$filename";       return $? ;;
+        esac
+    fi
+
+    # Không phải Smart Path hay Smart Run → báo lỗi bình thường
+    echo "command not found: $input"
+    return 127
+}
+# ── END SMART MODE ───────────────────────────────────────
