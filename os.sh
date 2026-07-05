@@ -140,18 +140,13 @@ LOCKEOF
 }
 
 # ─────────────────────────────────────────────────────────
-#  SMART MODE — màu sắc
+#  SMART MODE — màu sắc (dùng trong REPL)
 # ─────────────────────────────────────────────────────────
-_SR_LABEL='\033[1;96m'   # [Smart Run] / [Smart Path] — cyan
-_SR_FILE='\033[1;93m'    # tên file — vàng
-_SR_CMD='\033[1;36m'     # lệnh thực thi — xanh
-_SR_ERR='\033[1;31m'     # lỗi — đỏ
+_SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
 # ─────────────────────────────────────────────────────────
 #  Hàm Smart Run dùng trong REPL (11line)
-#  read -r đã nhận full line kể cả khoảng cách,
-#  nên Smart Path ở đây hoạt động tốt với spaces.
 # ─────────────────────────────────────────────────────────
 smart_run_cmd() {
     local input="$*"
@@ -161,7 +156,6 @@ smart_run_cmd() {
         local path="${input%/}"
         path="${path/#\~/$HOME}"
         if [ -d "$path" ]; then
-            echo -e "${_SR_LABEL}[Smart Path]${_SR_RST} cd ${_SR_FILE}\"${path}\"${_SR_RST}"
             cd "$path" || true
         else
             echo -e "${_SR_ERR}[Lỗi] Không tìm thấy thư mục: ${path}${_SR_RST}"
@@ -174,45 +168,32 @@ smart_run_cmd() {
     local ext="${filename##*.}"
 
     if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
-        local cmd="" display_cmd=""
         case "$ext" in
-            py)   cmd="python";      display_cmd="python $filename" ;;
-            sh)   cmd="bash";        display_cmd="bash $filename" ;;
-            js)   cmd="node";        display_cmd="node $filename" ;;
-            ts)   cmd="npx ts-node"; display_cmd="npx ts-node $filename" ;;
-            php)  cmd="php";         display_cmd="php $filename" ;;
-            rb)   cmd="ruby";        display_cmd="ruby $filename" ;;
-            lua)  cmd="lua";         display_cmd="lua $filename" ;;
-            pl)   cmd="perl";        display_cmd="perl $filename" ;;
-            go)   cmd="go run";      display_cmd="go run $filename" ;;
-            r|R)  cmd="Rscript";     display_cmd="Rscript $filename" ;;
+            py)   python "$filename";       return ;;
+            sh)   bash "$filename";         return ;;
+            js)   node "$filename";         return ;;
+            ts)   npx ts-node "$filename";  return ;;
+            php)  php "$filename";          return ;;
+            rb)   ruby "$filename";         return ;;
+            lua)  lua "$filename";          return ;;
+            pl)   perl "$filename";         return ;;
+            go)   go run "$filename";       return ;;
+            r|R)  Rscript "$filename";      return ;;
             java)
                 local cls="${filename%.java}"
-                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}javac ${filename} && java ${cls}${_SR_RST}"
-                javac "$filename" && java "$cls"; return
-                ;;
+                javac "$filename" && java "$cls"; return ;;
             c)
                 local out="${filename%.c}"
-                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}gcc ${filename} -o ${out} && ./${out}${_SR_RST}"
-                gcc "$filename" -o "$out" && "./$out"; return
-                ;;
+                gcc "$filename" -o "$out" && "./$out"; return ;;
             cpp)
                 local out="${filename%.cpp}"
-                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}g++ ${filename} -o ${out} && ./${out}${_SR_RST}"
-                g++ "$filename" -o "$out" && "./$out"; return
-                ;;
+                g++ "$filename" -o "$out" && "./$out"; return ;;
             rs)
                 local out="${filename%.rs}"
-                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}rustc ${filename} && ./${out}${_SR_RST}"
-                rustc "$filename" && "./$out"; return
-                ;;
+                rustc "$filename" && "./$out"; return ;;
             *)
-                bash -c "$input"; return
-                ;;
+                bash -c "$input"; return ;;
         esac
-        echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}${display_cmd}${_SR_RST}"
-        $cmd "$filename"
-        return
     fi
 
     # Lệnh thông thường — giữ nguyên
@@ -251,15 +232,14 @@ smart_run_cmd() {
 #  [12] Cài Smart Mode vào shell (vĩnh viễn)
 # ─────────────────────────────────────────────────────────
 12line() {
-    # Block này được nhúng vào .zshrc — dùng zle cho Smart Path (kể cả spaces)
-    # và command_not_found_handler cho Smart Run.
     local zsh_block='
 # ══════════════════════════════════════════════════════════
 # SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
-_SR_LABEL='"'"'\033[1;96m'"'"'
-_SR_FILE='"'"'\033[1;93m'"'"'
-_SR_CMD='"'"'\033[1;36m'"'"'
+
+# app.py, run.sh, index.js ... hiện màu vàng trên prompt
+ZSH_HIGHLIGHT_STYLES[unknown-token]='"'"'fg=yellow,bold'"'"'
+
 _SR_ERR='"'"'\033[1;31m'"'"'
 _SR_RST='"'"'\033[0m'"'"'
 
@@ -271,7 +251,6 @@ _smart_accept_line() {
         local path="${trimmed%/}"
         path="${path/#\~/$HOME}"
         if [[ -d "$path" ]]; then
-            print -n "\n${_SR_LABEL}[Smart Path]${_SR_RST} cd ${_SR_FILE}\"${path}\"${_SR_RST}"
             BUFFER="cd ${(q)path}"
             zle .accept-line
             return
@@ -289,34 +268,23 @@ command_not_found_handler() {
     local filename="$1"
     local ext="${filename##*.}"
     if [[ "$filename" == *.* && "$filename" != *'"'"' '"'"'* && -f "$filename" ]]; then
-        local cmd="" display_cmd=""
         case "$ext" in
-            py)   cmd="python";      display_cmd="python $filename" ;;
-            sh)   cmd="bash";        display_cmd="bash $filename" ;;
-            js)   cmd="node";        display_cmd="node $filename" ;;
-            ts)   cmd="npx ts-node"; display_cmd="npx ts-node $filename" ;;
-            php)  cmd="php";         display_cmd="php $filename" ;;
-            rb)   cmd="ruby";        display_cmd="ruby $filename" ;;
-            lua)  cmd="lua";         display_cmd="lua $filename" ;;
-            pl)   cmd="perl";        display_cmd="perl $filename" ;;
-            go)   cmd="go run";      display_cmd="go run $filename" ;;
-            r|R)  cmd="Rscript";     display_cmd="Rscript $filename" ;;
-            java) local cls="${filename%.java}"
-                  echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}javac ${filename} && java ${cls}${_SR_RST}"
-                  javac "$filename" && java "$cls"; return $? ;;
-            c)    local out="${filename%.c}"
-                  echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}gcc ${filename} -o ${out} && ./${out}${_SR_RST}"
-                  gcc "$filename" -o "$out" && "./$out"; return $? ;;
-            cpp)  local out="${filename%.cpp}"
-                  echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}g++ ${filename} -o ${out} && ./${out}${_SR_RST}"
-                  g++ "$filename" -o "$out" && "./$out"; return $? ;;
-            rs)   local out="${filename%.rs}"
-                  echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}rustc ${filename} && ./${out}${_SR_RST}"
-                  rustc "$filename" && "./$out"; return $? ;;
+            py)   python "$filename";       return $? ;;
+            sh)   bash "$filename";         return $? ;;
+            js)   node "$filename";         return $? ;;
+            ts)   npx ts-node "$filename";  return $? ;;
+            php)  php "$filename";          return $? ;;
+            rb)   ruby "$filename";         return $? ;;
+            lua)  lua "$filename";          return $? ;;
+            pl)   perl "$filename";         return $? ;;
+            go)   go run "$filename";       return $? ;;
+            r|R)  Rscript "$filename";      return $? ;;
+            java) local cls="${filename%.java}"; javac "$filename" && java "$cls"; return $? ;;
+            c)    local out="${filename%.c}"; gcc "$filename" -o "$out" && "./$out"; return $? ;;
+            cpp)  local out="${filename%.cpp}"; g++ "$filename" -o "$out" && "./$out"; return $? ;;
+            rs)   local out="${filename%.rs}"; rustc "$filename" && "./$out"; return $? ;;
             *)    echo "command not found: $filename"; return 127 ;;
         esac
-        echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}${display_cmd}${_SR_RST}"
-        $cmd "$filename"; return $?
     fi
     echo "command not found: $filename"
     return 127
@@ -329,6 +297,7 @@ command_not_found_handler() {
     # Bash dùng command_not_found_handle (không có 'r' cuối), không có ZLE
     local bash_block
     bash_block=$(printf '%s' "$zsh_block" \
+        | sed 's/ZSH_HIGHLIGHT_STYLES\[unknown-token\].*//' \
         | sed 's/zle -N accept-line _smart_accept_line/# (zle chỉ dùng trong zsh)/' \
         | sed 's/command_not_found_handler/command_not_found_handle/g' \
         | sed '/zle\./d' \
