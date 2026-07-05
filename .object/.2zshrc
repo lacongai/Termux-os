@@ -7,6 +7,9 @@ source $HOME/.oh-my-zsh/oh-my-zsh.sh
 [[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 [[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
+# app.py, run.sh, index.js ... hiện màu vàng trên prompt (unknown-token)
+ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+
 clear
 echo -e "\033[1;32m[*] ĐANG KHỞI ĐỘNG TERMUX-OS v1..."
 echo -ne "\033[1;36m[ĐANG TẢI CÁC MÔ-ĐUN] \033[1;32m"
@@ -59,11 +62,7 @@ draw_banner
 #  Lệnh thường: giữ nguyên hoàn toàn
 # ══════════════════════════════════════════════════════════
 
-# ── Màu sắc ────────────────────────────────────────────────
-_SR_LABEL='\033[1;96m'   # [Smart Run] / [Smart Path] — cyan
-_SR_FILE='\033[1;93m'    # tên file  — vàng
-_SR_CMD='\033[1;36m'     # lệnh thực thi — xanh cyan
-_SR_ERR='\033[1;31m'     # lỗi — đỏ
+_SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
 # ── ZLE accept-line: bắt raw buffer TRƯỚC khi zsh word-split ──
@@ -81,7 +80,6 @@ _smart_accept_line() {
         path="${path/#\~/$HOME}"
 
         if [[ -d "$path" ]]; then
-            print -n "\n${_SR_LABEL}[Smart Path]${_SR_RST} cd ${_SR_FILE}\"${path}\"${_SR_RST}"
             BUFFER="cd ${(q)path}"
             zle .accept-line
             return
@@ -103,40 +101,33 @@ command_not_found_handler() {
     local ext="${filename##*.}"
 
     if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
-        local cmd="" display_cmd=""
         case "$ext" in
-            py)   cmd="python";        display_cmd="python $filename" ;;
-            sh)   cmd="bash";          display_cmd="bash $filename" ;;
-            js)   cmd="node";          display_cmd="node $filename" ;;
-            ts)   cmd="npx ts-node";   display_cmd="npx ts-node $filename" ;;
-            php)  cmd="php";           display_cmd="php $filename" ;;
-            rb)   cmd="ruby";          display_cmd="ruby $filename" ;;
-            lua)  cmd="lua";           display_cmd="lua $filename" ;;
-            pl)   cmd="perl";          display_cmd="perl $filename" ;;
-            go)   cmd="go run";        display_cmd="go run $filename" ;;
-            r|R)  cmd="Rscript";       display_cmd="Rscript $filename" ;;
+            py)   python "$filename";       return $? ;;
+            sh)   bash "$filename";         return $? ;;
+            js)   node "$filename";         return $? ;;
+            ts)   npx ts-node "$filename";  return $? ;;
+            php)  php "$filename";          return $? ;;
+            rb)   ruby "$filename";         return $? ;;
+            lua)  lua "$filename";          return $? ;;
+            pl)   perl "$filename";         return $? ;;
+            go)   go run "$filename";       return $? ;;
+            r|R)  Rscript "$filename";      return $? ;;
             java)
                 local cls="${filename%.java}"
-                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}javac ${filename} && java ${cls}${_SR_RST}"
                 javac "$filename" && java "$cls"; return $? ;;
             c)
                 local out="${filename%.c}"
-                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}gcc ${filename} -o ${out} && ./${out}${_SR_RST}"
                 gcc "$filename" -o "$out" && "./$out"; return $? ;;
             cpp)
                 local out="${filename%.cpp}"
-                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}g++ ${filename} -o ${out} && ./${out}${_SR_RST}"
                 g++ "$filename" -o "$out" && "./$out"; return $? ;;
             rs)
                 local out="${filename%.rs}"
-                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}rustc ${filename} && ./${out}${_SR_RST}"
                 rustc "$filename" && "./$out"; return $? ;;
             *)
                 echo "command not found: $filename"
                 return 127 ;;
         esac
-        echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}${display_cmd}${_SR_RST}"
-        $cmd "$filename"; return $?
     fi
 
     echo "command not found: $filename"
