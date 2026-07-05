@@ -6,17 +6,17 @@ function parse_git_status() {
     local branch
     branch=$(git symbolic-ref --short HEAD 2>/dev/null)
     if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
-        echo " %{$fg_bold[red]%}(${branch}*)%{$reset_color%}"
+        echo " %B%F{red}(${branch}*)%b%f"
     else
-        echo " %{$fg_bold[green]%}(${branch})%{$reset_color%}"
+        echo " %{$fg_bold[green]%}(${branch})%b%f"
     fi
 }
 
-local user_info="%{$fg_bold[red]%}[%{$fg_bold[green]%}@henntaiiz%{$fg_bold[red]%}%{$fg_bold[white]%}termux%{$fg_bold[red]%}]"
-local current_dir="%{$fg_bold[red]%}[%{$fg_bold[cyan]%}%(5~|%-1~/…/%2~|%4~)%{$fg_bold[red]%}]"
+local user_info="%B%F{red}[%{$fg_bold[green]%}@henntaiiz%B%F{red}%{$fg_bold[white]%}termux%B%F{red}]"
+local current_dir="%B%F{red}[%{$fg_bold[cyan]%}%(5~|%-1~/…/%2~|%4~)%B%F{red}]"
 local git_info='$(parse_git_status)'
-local status_arrow="%(?.%{$fg_bold[green]%}❯❯❯.%{$fg_bold[red]%}❯❯❯)"
+local status_arrow="%(?.%{$fg_bold[green]%}❯❯❯.%B%F{red}❯❯❯)"
 
 PROMPT="
-%{$fg_bold[red]%}╭═─༺𓆩✧𓆪༻─${user_info}─${current_dir}${git_info}
-%{$fg_bold[red]%}╰═─༺𓆩✧𓆪༻─ ${status_arrow} %{$reset_color%}"
+%B%F{red}╭═─༺𓆩✧𓆪༻─${user_info}─${current_dir}${git_info}
+%B%F{red}╰═─༺𓆩✧𓆪༻─ ${status_arrow} %b%f"
