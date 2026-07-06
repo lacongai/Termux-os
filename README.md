@@ -64,19 +64,21 @@ bash os.sh
 
 # Các lệnh hiện có
 # Tên Mô tả
-01 Cài đặt Cần thiết Cài các gói công cụ cơ bản cho Termux
-02 Thiết lập Zsh Cấu hình shell Zsh
-03 Shell Zsh Chuyển sang sử dụng shell Zsh
-04 Shell Bash Quay lại sử dụng shell Bash
-05 Banner Zsh Tùy chỉnh banner hiển thị trên Zsh
-06 Giao diện Zsh Cài đặt theme và giao diện cho Zsh
-07 Tô sáng / Gợi ý Bật tính năng tô màu và gợi ý tự động
-08 Thêm Khóa Cyber Tăng cường bảo mật (Chế độ an toàn cao)
-09 Xóa Khóa Gỡ bỏ khóa bảo mật đã cài
-10 Cập nhật Script Cập nhật phiên bản mới nhất
-11 ⚡ Smart Mode Chạy chế độ thông minh tạm thời
-12 ⚡ Cài Smart Mode Cài đặt Smart Mode vĩnh viễn
-00 Thoát Đóng Terminal
+
+                        [01] Cài đặt Cần thiết
+                        [02] Thiết lập Zsh
+                        [03] Shell Zsh
+                        [04] Shell Bash
+                        [05] Banner Zsh
+                        [06] Giao diện Zsh
+                        [07] Tô sáng / Gợi ý tự động
+                        [08] Thêm Khóa Cyber (Bảo mật Cao)
+                        [09] Xóa Khóa
+                        [10] Cập nhật Script
+                        [11] ⚡ Smart Mode (Chạy tạm thời)
+                        [12] ⚡ Cài Smart Mode vào Shell (Vĩnh viễn)
+                        [00] Thoát Terminal
+
 
 # Lệnh [12]
           Tính năng
@@ -95,7 +97,7 @@ hỗ trợ Ai để cài đặt chính xác hơn.
 ✅ (_auto_install)
 ```
 
-## Api ai gemini
+# Api Endpoint
 ```bash
 https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}
 ```
