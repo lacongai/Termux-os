@@ -147,5 +147,4 @@ Hoặc nhấn vào link: https://t.me/henntaiiz
 
 ---
 
-© 2026 Termux Mods V2 | Bảo lưu mọi quyền
-```
+          © 2026 Termux Mods V2 | Bảo lưu mọi quyền
