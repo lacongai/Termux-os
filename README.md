@@ -53,9 +53,14 @@ bash os.sh
                         [00] Thoát Terminal
 
 # Lệnh [12]
-          Tính năng                              Có trong [12]
-Smart Path — paste đường dẫn → tự cd	     ✅ (_smart_accept_line)
+          Tính năng                              
+Smart Path — paste đường dẫn → tự cd	     
 Smart Run — gõ app.py → tự chạy đúng 
-interpreter	                               ✅ (command_not_found_handler)
+interpreter	                               
 Auto Install — lệnh chưa có → tự cài
-hỗ trợ Ai để cài đặt chính xác hơn.        ✅ (_auto_install)
+hỗ trợ Ai để cài đặt chính xác hơn.        
+
+           Có trong [12]
+✅ (_smart_accept_line)
+✅ (command_not_found_handler)
+✅ (_auto_install)
