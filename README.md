@@ -53,14 +53,28 @@ bash os.sh
                         [00] Thoát Terminal
 
 # Lệnh [12]
-          Tính năng                              
+          Tính năng
+```bash
 Smart Path — paste đường dẫn → tự cd	     
 Smart Run — gõ app.py → tự chạy đúng 
 interpreter	                               
 Auto Install — lệnh chưa có → tự cài
 hỗ trợ Ai để cài đặt chính xác hơn.        
+```
 
            Có trong [12]
+```bash
 ✅ (_smart_accept_line)
 ✅ (command_not_found_handler)
 ✅ (_auto_install)
+```
+
+## Api ai gemini
+```bash
+https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}
+```
+
+## Chìa khóa ai mặc định
+```bash
+GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
+```
