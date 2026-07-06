@@ -35,3 +35,27 @@ bash os.sh
 ```
 
 ### Note: Trong quá trình cài bị lỗi font chữ thì Lựa chọn: 1 để hết lỗi
+
+
+# Các lệnh hiện có
+                        [01] Cài đặt Cần thiết
+                        [02] Thiết lập Zsh
+                        [03] Shell Zsh
+                        [04] Shell Bash
+                        [05] Banner Zsh
+                        [06] Giao diện Zsh
+                        [07] Tô sáng / Gợi ý tự động
+                        [08] Thêm Khóa Cyber (Bảo mật Cao)
+                        [09] Xóa Khóa
+                        [10] Cập nhật Script
+                        [11] ⚡ Smart Mode (Chạy tạm thời)
+                        [12] ⚡ Cài Smart Mode vào Shell (Vĩnh viễn)
+                        [00] Thoát Terminal
+
+# Lệnh [12]
+          Tính năng                              Có trong [12]
+Smart Path — paste đường dẫn → tự cd	     ✅ (_smart_accept_line)
+Smart Run — gõ app.py → tự chạy đúng 
+interpreter	                               ✅ (command_not_found_handler)
+Auto Install — lệnh chưa có → tự cài
+hỗ trợ Ai để cài đặt chính xác hơn.        ✅ (_auto_install)
