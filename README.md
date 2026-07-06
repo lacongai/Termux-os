@@ -139,10 +139,13 @@ Nên thay đổi API Key mặc định thành key của riêng bạn để đả
 
 Nếu gặp vấn đề trong quá trình cài đặt hoặc sử dụng, vui lòng tạo issue trên repository của dự án.
 
+<a href="https://t.me/henntaiiz">
+  <img src="https://img.shields.io/badge/Telegram-@henntaiiz-blue?style=for-the-badge&logo=telegram" alt="Telegram"/>
+</a>
+
+Hoặc nhấn vào link: https://t.me/henntaiiz
+
 ---
 
 © 2026 Termux Mods V2 | Bảo lưu mọi quyền
 ```
-https://t.me/@henntaiiz
-```
-https://img.shields.io/badge/Telegram-@henntaiiz-blue?style=for-the-badge&logo=telegram
