@@ -1,15 +1,40 @@
-# Termux Mods V2 CN update, July 5th, 2026 at 21:58 PM, public update at 23:15 PM.
-# Installation
+# Termux Mods V2 - Hướng Dẫn Cài Đặt và Sử Dụng
 
+> **Phiên bản:** V2 CN  
+> **Cập nhật:** 05/07/2026 lúc 21:58  
+> **Phát hành công khai:** 23:15 cùng ngày
+
+---
+
+## 📦 Cài Đặt Lần Đầu
+
+Sao chép và dán các lệnh sau vào Termux:
+
+# Cập nhật hệ thống
 ```bash
 apt update && apt upgrade -y
-pkg install git
-git clone https://github.com/lacongai/Termux-os
-cd Termux-os
-bash os.sh
-
 ```
 
+# Cài đặt Git
+```bash
+pkg install git
+```
+
+# Clone repository
+```bash
+cd ~
+git clone https://github.com/lacongai/Termux-os
+```
+
+# Di chuyển vào thư mục
+```bash
+cd Termux-os
+```
+
+# Chạy script cài đặt
+```bash
+bash os.sh
+```
 
 # Reinstall the Tool
 
@@ -38,19 +63,20 @@ bash os.sh
 
 
 # Các lệnh hiện có
-                        [01] Cài đặt Cần thiết
-                        [02] Thiết lập Zsh
-                        [03] Shell Zsh
-                        [04] Shell Bash
-                        [05] Banner Zsh
-                        [06] Giao diện Zsh
-                        [07] Tô sáng / Gợi ý tự động
-                        [08] Thêm Khóa Cyber (Bảo mật Cao)
-                        [09] Xóa Khóa
-                        [10] Cập nhật Script
-                        [11] ⚡ Smart Mode (Chạy tạm thời)
-                        [12] ⚡ Cài Smart Mode vào Shell (Vĩnh viễn)
-                        [00] Thoát Terminal
+# Tên Mô tả
+01 Cài đặt Cần thiết Cài các gói công cụ cơ bản cho Termux
+02 Thiết lập Zsh Cấu hình shell Zsh
+03 Shell Zsh Chuyển sang sử dụng shell Zsh
+04 Shell Bash Quay lại sử dụng shell Bash
+05 Banner Zsh Tùy chỉnh banner hiển thị trên Zsh
+06 Giao diện Zsh Cài đặt theme và giao diện cho Zsh
+07 Tô sáng / Gợi ý Bật tính năng tô màu và gợi ý tự động
+08 Thêm Khóa Cyber Tăng cường bảo mật (Chế độ an toàn cao)
+09 Xóa Khóa Gỡ bỏ khóa bảo mật đã cài
+10 Cập nhật Script Cập nhật phiên bản mới nhất
+11 ⚡ Smart Mode Chạy chế độ thông minh tạm thời
+12 ⚡ Cài Smart Mode Cài đặt Smart Mode vĩnh viễn
+00 Thoát Đóng Terminal
 
 # Lệnh [12]
           Tính năng
