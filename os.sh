@@ -145,42 +145,74 @@ LOCKEOF
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
-# ── Auto Install (Xử lý trực tiếp trên RAM - Không tạo file) ──
+# ── Fix TMPDIR cho Termux ───────────────────────────────
+if [ -z "$TMPDIR" ]; then
+    export TMPDIR="$PREFIX/tmp"
+fi
+mkdir -p "$TMPDIR" 2>/dev/null
+
+# ── Auto Install (bash — dùng trong REPL) ─────────────────
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    
+    # Định nghĩa thư mục tạm an toàn trên Termux
+    local tmp_dir="${TMPDIR:-$PREFIX/tmp}"
+    mkdir -p "$tmp_dir" 2>/dev/null
     
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
     # ── Bước 1: pkg install trực tiếp ────────────────────────
     echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Đang thử cài..."
-    
-    pkg install -y "$cmd" >/dev/null 2>&1
-    if [ $? -eq 0 ] && command -v "$cmd" &>/dev/null; then
+    local log_file="${tmp_dir}/_ai_$$.log" code_file="${tmp_dir}/_ai_exit_$$.code"
+    ( pkg install -y "$cmd" &>"$log_file"; echo $? > "$code_file" ) &
+    local pkg_pid=$!; local spin_i=0
+    while kill -0 "$pkg_pid" 2>/dev/null; do
+        printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$spin_i]}${_AI_RST} Đang cài '${_AI_W}${cmd}${_AI_RST}'..."
+        spin_i=$(( (spin_i + 1) % 10 )); sleep 0.1
+    done
+    wait "$pkg_pid" 2>/dev/null; printf "\r\033[2K"
+    local install_status; install_status=$(cat "$code_file" 2>/dev/null)
+    rm -f "$log_file" "$code_file" 2>/dev/null
+    if [[ "$install_status" == "0" ]] && command -v "$cmd" &>/dev/null; then
         echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${cmd}${_AI_RST}'"
         "$cmd" "${args[@]}"; return $?
     fi
 
-    # ── Bước 2: Gemini AI ────────────────────────────────────
+    # ── Bước 2: Gemini AI (ưu tiên trước pkg search) ─────────
     echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang hỏi Gemini AI..."
     local ai_pkg=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
-        echo -e "${_AIA}[Auto Install AI]${_AI_RST} Đang nhận diện gói từ AI..."
-        
-        local ai_response
-        ai_response=$(curl -sf --max-time 15 \
-          -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
-          -H "Content-Type: application/json" \
-          -d "{\"contents\":[{\"parts\":[{\"text\":\"What is the exact Termux pkg package name for the command: ${cmd}? Reply with ONLY the package name, one word.\"}]}]}")
-        
-        ai_pkg=$(echo "$ai_response" | grep -o '"text":"[^"]*"' | head -1 \
+        local ai_out="${tmp_dir}/_ai_g_$$.json"
+        (
+            curl -sf --max-time 20 \
+              -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "{\"contents\":[{\"parts\":[{\"text\":\"What is the exact Termux pkg package name for the command: ${cmd}? Reply with ONLY the package name, one word.\"}]}]}" \
+              > "$ai_out" 2>/dev/null || echo '{"error":"timeout"}' > "$ai_out"
+        ) &
+        local ai_pid=$!; local spin_ai=0
+        while kill -0 "$ai_pid" 2>/dev/null; do
+            printf "\r${_AIA}[Auto Install AI]${_AI_RST} ${_AI_Y}${frames[$spin_ai]}${_AI_RST} Đang hỏi Gemini..."
+            spin_ai=$(( (spin_ai + 1) % 10 )); sleep 0.1
+        done
+        wait "$ai_pid" 2>/dev/null; printf "\r\033[2K"
+        ai_pkg=$(grep -o '"text":"[^"]*"' "$ai_out" 2>/dev/null | head -1 \
             | sed 's/"text":"//;s/".*//' | tr -d '[:space:]`*#\n')
-            
+        rm -f "$ai_out" 2>/dev/null
         if [[ -n "$ai_pkg" && "$ai_pkg" =~ ^[a-zA-Z0-9][a-zA-Z0-9_+.-]*$ ]]; then
             echo -e "${_AIA}[Auto Install AI]${_AI_RST} Gemini gợi ý: ${_AI_C}${ai_pkg}${_AI_RST}"
-            pkg install -y "$ai_pkg" >/dev/null 2>&1
+            local log_ai="${tmp_dir}/_ai_gi_$$.log" code_ai="${tmp_dir}/_ai_gi_exit_$$.code"
+            ( pkg install -y "$ai_pkg" &>"$log_ai"; echo $? > "$code_ai" ) &
+            local ai_pkg_pid=$!; local spin_ai2=0
+            while kill -0 "$ai_pkg_pid" 2>/dev/null; do
+                printf "\r${_AIA}[Auto Install AI]${_AI_RST} ${_AI_Y}${frames[$spin_ai2]}${_AI_RST} Đang cài '${_AI_W}${ai_pkg}${_AI_RST}'..."
+                spin_ai2=$(( (spin_ai2 + 1) % 10 )); sleep 0.1
+            done
+            wait "$ai_pkg_pid" 2>/dev/null; printf "\r\033[2K"; rm -f "$log_ai" "$code_ai" 2>/dev/null
             if command -v "$cmd" &>/dev/null; then
                 echo -e "${_AI_G}[Auto Install AI]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${ai_pkg}${_AI_RST}'"
                 "$cmd" "${args[@]}"; return $?
@@ -189,6 +221,8 @@ _auto_install() {
         else
             echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ Không lấy được gợi ý từ AI. Chuyển sang tìm gói..."
         fi
+    else
+        echo -e "${_AI_Y}[Auto Install AI]${_AI_RST} ⚠ Chưa cấu hình GEMINI_API_KEY — bỏ qua AI."
     fi
 
     # ── Bước 3: pkg search ────────────────────────────────────
@@ -208,7 +242,14 @@ _auto_install() {
         if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 ]]; then
             local selected; selected=$(echo "$alt_list" | sed -n "${choice}p")
             if [[ -n "$selected" ]]; then
-                pkg install -y "$selected" >/dev/null 2>&1
+                local log2="${tmp_dir}/_ai_s_$$.log" code2="${tmp_dir}/_ai_s_exit_$$.code"
+                ( pkg install -y "$selected" &>"$log2"; echo $? > "$code2" ) &
+                local pkg2_pid=$!; local spin2_i=0
+                while kill -0 "$pkg2_pid" 2>/dev/null; do
+                    printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$spin2_i]}${_AI_RST} Đang cài '${_AI_W}${selected}${_AI_RST}'..."
+                    spin2_i=$(( (spin2_i + 1) % 10 )); sleep 0.1
+                done
+                wait "$pkg2_pid" 2>/dev/null; printf "\r\033[2K"; rm -f "$log2" "$code2" 2>/dev/null
                 if command -v "$cmd" &>/dev/null; then
                     echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${selected}${_AI_RST}'"
                     "$cmd" "${args[@]}"; return $?
@@ -301,7 +342,7 @@ smart_run_cmd() {
 }
 
 # ─────────────────────────────────────────────────────────
-#  [12] Cài Smart Mode vào shell (vĩnh viễn) — Không tạo file log
+#  [12] Cài Smart Mode vào shell (vĩnh viễn) — dùng heredoc
 # ─────────────────────────────────────────────────────────
 12line() {
     local marker="# SMART MODE (by Termux-OS)"
@@ -348,38 +389,75 @@ _auto_install() {
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
+    local -a frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    setopt LOCAL_OPTIONS; unsetopt NOTIFY
+    
+    local tmp_dir="${TMPDIR:-$PREFIX/tmp}"
+    mkdir -p "$tmp_dir" 2>/dev/null
     
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
+    # ── Bước 1: pkg install trực tiếp ────────────────────────
     echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Đang thử cài..."
-    pkg install -y "$cmd" >/dev/null 2>&1
-    if command -v "$cmd" &>/dev/null; then
+    local log_file="${tmp_dir}/_ai_$$.log" code_file="${tmp_dir}/_ai_exit_$$.code"
+    ( pkg install -y "$cmd" &>"$log_file"; echo $? > "$code_file" ) &
+    local pkg_pid=$!; local spin_i=1
+    while kill -0 "$pkg_pid" 2>/dev/null; do
+        printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$spin_i]}${_AI_RST} Đang cài '${_AI_W}${cmd}${_AI_RST}'..."
+        spin_i=$(( spin_i % 10 + 1 )); sleep 0.1
+    done
+    wait "$pkg_pid" 2>/dev/null; printf "\r\033[2K"
+    local install_status; install_status=$(cat "$code_file" 2>/dev/null)
+    rm -f "$log_file" "$code_file" 2>/dev/null
+    if [[ "$install_status" == "0" ]] && command -v "$cmd" &>/dev/null; then
         echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${cmd}${_AI_RST}'"
         "$cmd" "${args[@]}"; return $?
     fi
 
+    # ── Bước 2: Gemini AI (ưu tiên trước pkg search) ─────────
     echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang hỏi Gemini AI..."
     local ai_pkg=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
-        echo -e "${_AIA}[Auto Install AI]${_AI_RST} Đang nhận diện gói từ AI..."
-        local ai_response
-        ai_response=$(curl -sf --max-time 15 \
-          -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
-          -H "Content-Type: application/json" \
-          -d "{\"contents\":[{\"parts\":[{\"text\":\"What is the exact Termux pkg package name for the command: ${cmd}? Reply with ONLY the package name, one word.\"}]}]}")
-        
-        ai_pkg=$(echo "$ai_response" | grep -o '"text":"[^"]*"' | head -1 \
+        local ai_out="${tmp_dir}/_ai_g_$$.json"
+        (
+            curl -sf --max-time 20 \
+              -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "{\"contents\":[{\"parts\":[{\"text\":\"What is the exact Termux pkg package name for the command: ${cmd}? Reply with ONLY the package name, one word.\"}]}]}" \
+              > "$ai_out" 2>/dev/null || echo '{"error":"timeout"}' > "$ai_out"
+        ) &
+        local ai_pid=$!; local spin_ai=1
+        while kill -0 "$ai_pid" 2>/dev/null; do
+            printf "\r${_AIA}[Auto Install AI]${_AI_RST} ${_AI_Y}${frames[$spin_ai]}${_AI_RST} Đang hỏi Gemini..."
+            spin_ai=$(( spin_ai % 10 + 1 )); sleep 0.1
+        done
+        wait "$ai_pid" 2>/dev/null; printf "\r\033[2K"
+        ai_pkg=$(grep -o '"text":"[^"]*"' "$ai_out" 2>/dev/null | head -1 \
             | sed 's/"text":"//;s/".*//' | tr -d '[:space:]`*#\n')
+        rm -f "$ai_out" 2>/dev/null
         if [[ -n "$ai_pkg" && "$ai_pkg" =~ ^[a-zA-Z0-9][a-zA-Z0-9_+.-]*$ ]]; then
             echo -e "${_AIA}[Auto Install AI]${_AI_RST} Gemini gợi ý: ${_AI_C}${ai_pkg}${_AI_RST}"
-            pkg install -y "$ai_pkg" >/dev/null 2>&1
+            local log_ai="${tmp_dir}/_ai_gi_$$.log" code_ai="${tmp_dir}/_ai_gi_exit_$$.code"
+            ( pkg install -y "$ai_pkg" &>"$log_ai"; echo $? > "$code_ai" ) &
+            local ai_pkg_pid=$!; local spin_ai2=1
+            while kill -0 "$ai_pkg_pid" 2>/dev/null; do
+                printf "\r${_AIA}[Auto Install AI]${_AI_RST} ${_AI_Y}${frames[$spin_ai2]}${_AI_RST} Đang cài '${_AI_W}${ai_pkg}${_AI_RST}'..."
+                spin_ai2=$(( spin_ai2 % 10 + 1 )); sleep 0.1
+            done
+            wait "$ai_pkg_pid" 2>/dev/null; printf "\r\033[2K"; rm -f "$log_ai" "$code_ai" 2>/dev/null
             if command -v "$cmd" &>/dev/null; then
                 echo -e "${_AI_G}[Auto Install AI]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${ai_pkg}${_AI_RST}'"
                 "$cmd" "${args[@]}"; return $?
             fi
+            echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ Không thể cài '${ai_pkg}'. Chuyển sang tìm gói..."
+        else
+            echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ Không lấy được gợi ý từ AI. Chuyển sang tìm gói..."
         fi
+    else
+        echo -e "${_AI_Y}[Auto Install AI]${_AI_RST} ⚠ Chưa cấu hình GEMINI_API_KEY — bỏ qua AI."
     fi
 
+    # ── Bước 3: pkg search ────────────────────────────────────
     echo ""
     echo -e "${_AI_Y}[Auto Install]${_AI_RST} Đang tìm gói trong kho Termux..."
     local alt_list
@@ -396,13 +474,23 @@ _auto_install() {
         if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 ]]; then
             local selected; selected=$(echo "$alt_list" | sed -n "${choice}p")
             if [[ -n "$selected" ]]; then
-                pkg install -y "$selected" >/dev/null 2>&1
+                local log2="${tmp_dir}/_ai_s_$$.log" code2="${tmp_dir}/_ai_s_exit_$$.code"
+                ( pkg install -y "$selected" &>"$log2"; echo $? > "$code2" ) &
+                local pkg2_pid=$!; local spin2_i=1
+                while kill -0 "$pkg2_pid" 2>/dev/null; do
+                    printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$spin2_i]}${_AI_RST} Đang cài '${_AI_W}${selected}${_AI_RST}'..."
+                    spin2_i=$(( spin2_i % 10 + 1 )); sleep 0.1
+                done
+                wait "$pkg2_pid" 2>/dev/null; printf "\r\033[2K"; rm -f "$log2" "$code2" 2>/dev/null
                 if command -v "$cmd" &>/dev/null; then
                     echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${selected}${_AI_RST}'"
                     "$cmd" "${args[@]}"; return $?
                 fi
+                echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Vẫn không thể chạy '${cmd}' sau khi cài '${selected}'"
             fi
         fi
+    else
+        echo -e "${_AI_R}[Auto Install]${_AI_RST} Không tìm thấy gói nào phù hợp cho '${_AI_W}${cmd}${_AI_RST}'"
     fi
     return 127
 }
@@ -460,38 +548,74 @@ _auto_install() {
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    
+    local tmp_dir="${TMPDIR:-$PREFIX/tmp}"
+    mkdir -p "$tmp_dir" 2>/dev/null
     
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
+    # ── Bước 1: pkg install trực tiếp ────────────────────────
     echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Đang thử cài..."
-    pkg install -y "$cmd" >/dev/null 2>&1
-    if command -v "$cmd" &>/dev/null; then
+    local log_file="${tmp_dir}/_ai_$$.log" code_file="${tmp_dir}/_ai_exit_$$.code"
+    ( pkg install -y "$cmd" &>"$log_file"; echo $? > "$code_file" ) &
+    local pkg_pid=$!; local spin_i=0
+    while kill -0 "$pkg_pid" 2>/dev/null; do
+        printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$spin_i]}${_AI_RST} Đang cài '${_AI_W}${cmd}${_AI_RST}'..."
+        spin_i=$(( (spin_i + 1) % 10 )); sleep 0.1
+    done
+    wait "$pkg_pid" 2>/dev/null; printf "\r\033[2K"
+    local install_status; install_status=$(cat "$code_file" 2>/dev/null)
+    rm -f "$log_file" "$code_file" 2>/dev/null
+    if [[ "$install_status" == "0" ]] && command -v "$cmd" &>/dev/null; then
         echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${cmd}${_AI_RST}'"
         "$cmd" "${args[@]}"; return $?
     fi
 
+    # ── Bước 2: Gemini AI (ưu tiên trước pkg search) ─────────
     echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang hỏi Gemini AI..."
     local ai_pkg=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
-        echo -e "${_AIA}[Auto Install AI]${_AI_RST} Đang nhận diện gói từ AI..."
-        local ai_response
-        ai_response=$(curl -sf --max-time 15 \
-          -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
-          -H "Content-Type: application/json" \
-          -d "{\"contents\":[{\"parts\":[{\"text\":\"What is the exact Termux pkg package name for the command: ${cmd}? Reply with ONLY the package name, one word.\"}]}]}")
-        
-        ai_pkg=$(echo "$ai_response" | grep -o '"text":"[^"]*"' | head -1 \
+        local ai_out="${tmp_dir}/_ai_g_$$.json"
+        (
+            curl -sf --max-time 20 \
+              -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "{\"contents\":[{\"parts\":[{\"text\":\"What is the exact Termux pkg package name for the command: ${cmd}? Reply with ONLY the package name, one word.\"}]}]}" \
+              > "$ai_out" 2>/dev/null || echo '{"error":"timeout"}' > "$ai_out"
+        ) &
+        local ai_pid=$!; local spin_ai=0
+        while kill -0 "$ai_pid" 2>/dev/null; do
+            printf "\r${_AIA}[Auto Install AI]${_AI_RST} ${_AI_Y}${frames[$spin_ai]}${_AI_RST} Đang hỏi Gemini..."
+            spin_ai=$(( (spin_ai + 1) % 10 )); sleep 0.1
+        done
+        wait "$ai_pid" 2>/dev/null; printf "\r\033[2K"
+        ai_pkg=$(grep -o '"text":"[^"]*"' "$ai_out" 2>/dev/null | head -1 \
             | sed 's/"text":"//;s/".*//' | tr -d '[:space:]`*#\n')
+        rm -f "$ai_out" 2>/dev/null
         if [[ -n "$ai_pkg" && "$ai_pkg" =~ ^[a-zA-Z0-9][a-zA-Z0-9_+.-]*$ ]]; then
             echo -e "${_AIA}[Auto Install AI]${_AI_RST} Gemini gợi ý: ${_AI_C}${ai_pkg}${_AI_RST}"
-            pkg install -y "$ai_pkg" >/dev/null 2>&1
+            local log_ai="${tmp_dir}/_ai_gi_$$.log" code_ai="${tmp_dir}/_ai_gi_exit_$$.code"
+            ( pkg install -y "$ai_pkg" &>"$log_ai"; echo $? > "$code_ai" ) &
+            local ai_pkg_pid=$!; local spin_ai2=0
+            while kill -0 "$ai_pkg_pid" 2>/dev/null; do
+                printf "\r${_AIA}[Auto Install AI]${_AI_RST} ${_AI_Y}${frames[$spin_ai2]}${_AI_RST} Đang cài '${_AI_W}${ai_pkg}${_AI_RST}'..."
+                spin_ai2=$(( spin_ai2 % 10 + 1 )); sleep 0.1
+            done
+            wait "$ai_pkg_pid" 2>/dev/null; printf "\r\033[2K"; rm -f "$log_ai" "$code_ai" 2>/dev/null
             if command -v "$cmd" &>/dev/null; then
                 echo -e "${_AI_G}[Auto Install AI]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${ai_pkg}${_AI_RST}'"
                 "$cmd" "${args[@]}"; return $?
             fi
+            echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ Không thể cài '${ai_pkg}'. Chuyển sang tìm gói..."
+        else
+            echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ Không lấy được gợi ý từ AI. Chuyển sang tìm gói..."
         fi
+    else
+        echo -e "${_AI_Y}[Auto Install AI]${_AI_RST} ⚠ Chưa cấu hình GEMINI_API_KEY — bỏ qua AI."
     fi
 
+    # ── Bước 3: pkg search ────────────────────────────────────
     echo ""
     echo -e "${_AI_Y}[Auto Install]${_AI_RST} Đang tìm gói trong kho Termux..."
     local alt_list
@@ -508,13 +632,23 @@ _auto_install() {
         if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 ]]; then
             local selected; selected=$(echo "$alt_list" | sed -n "${choice}p")
             if [[ -n "$selected" ]]; then
-                pkg install -y "$selected" >/dev/null 2>&1
+                local log2="${tmp_dir}/_ai_s_$$.log" code2="${tmp_dir}/_ai_s_exit_$$.code"
+                ( pkg install -y "$selected" &>"$log2"; echo $? > "$code2" ) &
+                local pkg2_pid=$!; local spin2_i=0
+                while kill -0 "$pkg2_pid" 2>/dev/null; do
+                    printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$spin2_i]}${_AI_RST} Đang cài '${_AI_W}${selected}${_AI_RST}'..."
+                    spin2_i=$(( (spin2_i + 1) % 10 )); sleep 0.1
+                done
+                wait "$pkg2_pid" 2>/dev/null; printf "\r\033[2K"; rm -f "$log2" "$code2" 2>/dev/null
                 if command -v "$cmd" &>/dev/null; then
                     echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${selected}${_AI_RST}'"
                     "$cmd" "${args[@]}"; return $?
                 fi
+                echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Vẫn không thể chạy '${cmd}' sau khi cài '${selected}'"
             fi
         fi
+    else
+        echo -e "${_AI_R}[Auto Install]${_AI_RST} Không tìm thấy gói nào phù hợp cho '${_AI_W}${cmd}${_AI_RST}'"
     fi
     return 127
 }
@@ -552,7 +686,7 @@ BASH_SMART_EOF
     fi
 
     echo -e "${C}\nSmart Mode sẽ hoạt động tự động từ lần mở shell tiếp theo.${RS}"
-    echo -e "${W}Hoặc chạy ngay: ${Y}source ~/.bashrc${RS}"
+    echo -e "${W}Hoặc chạy ngay: ${Y}source ~/.zshrc${RS}"
     sleep 3
     menu
 }
