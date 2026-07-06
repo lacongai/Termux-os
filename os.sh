@@ -1,4 +1,4 @@
-!/bin/bash
+#!/bin/bash
 R='\033[1;31m'
 G='\033[1;32m'
 Y='\033[1;93m'
@@ -152,6 +152,7 @@ _auto_install() {
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
     local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    mkdir -p /tmp
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
     # ── Bước 1: pkg install trực tiếp ────────────────────────
@@ -175,7 +176,7 @@ _auto_install() {
     echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang hỏi Gemini AI..."
     local ai_pkg=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
-        local ai_out="/tmp/_ai_g_$.json"
+        local ai_out="/tmp/_ai_g_$$.json"
         (
             curl -sf --max-time 20 \
               -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
@@ -194,7 +195,7 @@ _auto_install() {
         rm -f "$ai_out"
         if [[ -n "$ai_pkg" && "$ai_pkg" =~ ^[a-zA-Z0-9][a-zA-Z0-9_+.-]*$ ]]; then
             echo -e "${_AIA}[Auto Install AI]${_AI_RST} Gemini gợi ý: ${_AI_C}${ai_pkg}${_AI_RST}"
-            local log_ai="/tmp/_ai_gi_$.log" code_ai="/tmp/_ai_gi_exit_$.code"
+            local log_ai="/tmp/_ai_gi_$$.log" code_ai="/tmp/_ai_gi_exit_$$.code"
             ( pkg install -y "$ai_pkg" &>"$log_ai"; echo $? > "$code_ai" ) &
             local ai_pkg_pid=$!; local spin_ai2=0
             while kill -0 "$ai_pkg_pid" 2>/dev/null; do
@@ -231,7 +232,7 @@ _auto_install() {
         if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 ]]; then
             local selected; selected=$(echo "$alt_list" | sed -n "${choice}p")
             if [[ -n "$selected" ]]; then
-                local log2="/tmp/_ai_s_$.log" code2="/tmp/_ai_s_exit_$.code"
+                local log2="/tmp/_ai_s_$$.log" code2="/tmp/_ai_s_exit_$$.code"
                 ( pkg install -y "$selected" &>"$log2"; echo $? > "$code2" ) &
                 local pkg2_pid=$!; local spin2_i=0
                 while kill -0 "$pkg2_pid" 2>/dev/null; do
@@ -380,6 +381,7 @@ _auto_install() {
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
     local -a frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
     setopt LOCAL_OPTIONS; unsetopt NOTIFY
+    mkdir -p /tmp
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
     # ── Bước 1: pkg install trực tiếp ────────────────────────
@@ -403,7 +405,7 @@ _auto_install() {
     echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang hỏi Gemini AI..."
     local ai_pkg=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
-        local ai_out="/tmp/_ai_g_$.json"
+        local ai_out="/tmp/_ai_g_$$.json"
         (
             curl -sf --max-time 20 \
               -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
@@ -422,7 +424,7 @@ _auto_install() {
         rm -f "$ai_out"
         if [[ -n "$ai_pkg" && "$ai_pkg" =~ ^[a-zA-Z0-9][a-zA-Z0-9_+.-]*$ ]]; then
             echo -e "${_AIA}[Auto Install AI]${_AI_RST} Gemini gợi ý: ${_AI_C}${ai_pkg}${_AI_RST}"
-            local log_ai="/tmp/_ai_gi_$.log" code_ai="/tmp/_ai_gi_exit_$.code"
+            local log_ai="/tmp/_ai_gi_$$.log" code_ai="/tmp/_ai_gi_exit_$$.code"
             ( pkg install -y "$ai_pkg" &>"$log_ai"; echo $? > "$code_ai" ) &
             local ai_pkg_pid=$!; local spin_ai2=1
             while kill -0 "$ai_pkg_pid" 2>/dev/null; do
@@ -459,7 +461,7 @@ _auto_install() {
         if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 ]]; then
             local selected; selected=$(echo "$alt_list" | sed -n "${choice}p")
             if [[ -n "$selected" ]]; then
-                local log2="/tmp/_ai_s_$.log" code2="/tmp/_ai_s_exit_$.code"
+                local log2="/tmp/_ai_s_$$.log" code2="/tmp/_ai_s_exit_$$.code"
                 ( pkg install -y "$selected" &>"$log2"; echo $? > "$code2" ) &
                 local pkg2_pid=$!; local spin2_i=1
                 while kill -0 "$pkg2_pid" 2>/dev/null; do
@@ -534,6 +536,7 @@ _auto_install() {
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
     local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    mkdir -p /tmp
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
     # ── Bước 1: pkg install trực tiếp ────────────────────────
@@ -557,7 +560,7 @@ _auto_install() {
     echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang hỏi Gemini AI..."
     local ai_pkg=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
-        local ai_out="/tmp/_ai_g_$.json"
+        local ai_out="/tmp/_ai_g_$$.json"
         (
             curl -sf --max-time 20 \
               -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
@@ -576,12 +579,12 @@ _auto_install() {
         rm -f "$ai_out"
         if [[ -n "$ai_pkg" && "$ai_pkg" =~ ^[a-zA-Z0-9][a-zA-Z0-9_+.-]*$ ]]; then
             echo -e "${_AIA}[Auto Install AI]${_AI_RST} Gemini gợi ý: ${_AI_C}${ai_pkg}${_AI_RST}"
-            local log_ai="/tmp/_ai_gi_$.log" code_ai="/tmp/_ai_gi_exit_$.code"
+            local log_ai="/tmp/_ai_gi_$$.log" code_ai="/tmp/_ai_gi_exit_$$.code"
             ( pkg install -y "$ai_pkg" &>"$log_ai"; echo $? > "$code_ai" ) &
             local ai_pkg_pid=$!; local spin_ai2=0
             while kill -0 "$ai_pkg_pid" 2>/dev/null; do
                 printf "\r${_AIA}[Auto Install AI]${_AI_RST} ${_AI_Y}${frames[$spin_ai2]}${_AI_RST} Đang cài '${_AI_W}${ai_pkg}${_AI_RST}'..."
-                spin_ai2=$(( (spin_ai2 + 1) % 10 )); sleep 0.1
+                spin_ai2=$(( spin_ai2 % 10 + 1 )); sleep 0.1
             done
             wait "$ai_pkg_pid" 2>/dev/null; printf "\r\033[2K"; rm -f "$log_ai" "$code_ai"
             if command -v "$cmd" &>/dev/null; then
@@ -613,7 +616,7 @@ _auto_install() {
         if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 ]]; then
             local selected; selected=$(echo "$alt_list" | sed -n "${choice}p")
             if [[ -n "$selected" ]]; then
-                local log2="/tmp/_ai_s_$.log" code2="/tmp/_ai_s_exit_$.code"
+                local log2="/tmp/_ai_s_$$.log" code2="/tmp/_ai_s_exit_$$.code"
                 ( pkg install -y "$selected" &>"$log2"; echo $? > "$code2" ) &
                 local pkg2_pid=$!; local spin2_i=0
                 while kill -0 "$pkg2_pid" 2>/dev/null; do
