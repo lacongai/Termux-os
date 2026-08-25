@@ -63,16 +63,78 @@ banner
 5line() { rm -rf ~/.zshrc; cd ~/Termux-os/.object; bash .2.sh; clear ; cd ~/Termux-os ; bash os.sh; }
 6line() { cd ~/Termux-os/.object; bash .1.sh; clear ; cd ~/Termux-os ; bash os.sh; }
 7line() { cd ~/Termux-os/.object; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear ; cd ~/Termux-os ; bash os.sh; }
-10line() { rm -rf ~/Termux-os; cd; git clone https://github.com/lacongai/Termux-os; cd ~/Termux-os ; bash os.sh; }
+# ─────────────────────────────────────────────────────────
+#  [10] Tự động cập nhật Tool từ GitHub
+# ─────────────────────────────────────────────────────────
+10line() {
+    echo -e "\n${C}Đang kiểm tra cập nhật từ GitHub...${RS}"
+    
+    # Kiểm tra xem thư mục Termux-os đã là git repository chưa
+    if [ ! -d ~/Termux-os/.git ]; then
+        echo -e "${Y}[!] Thư mục hiện tại không phải Git repository. Đang tiến hành cài đặt lại từ đầu...${RS}"
+        rm -rf ~/Termux-os
+        git clone https://github.com/lacongai/Termux-os ~/Termux-os
+        cd ~/Termux-os && bash os.sh
+        return
+    fi
+
+    cd ~/Termux-os || exit
+    
+    # Ẩn output rườm rà, fetch thông tin mới từ remote
+    git fetch origin &>/dev/null
+    
+    # So sánh nhánh hiện tại với nhánh trên remote (mặc định là main/master)
+    local current_branch
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
+    
+    local local_commit remote_commit
+    local_commit=$(git rev-parse HEAD)
+    remote_commit=$(git rev-parse "origin/$current_branch")
+    
+    if [ "$local_commit" = "$remote_commit" ]; then
+        echo -e "${G}[✓] Tool của bạn đang là phiên bản mới nhất!${RS}"
+        sleep 2
+        menu
+    else
+        echo -e "${Y}[!] Phát hiện phiên bản mới trên GitHub! Đang cập nhật...${RS}"
+        
+        # Tiến hành pull code mới về
+        if git pull origin "$current_branch"; then
+            echo -e "${G}[✓] Cập nhật thành công! Đang khởi động lại tool...${RS}"
+            sleep 2
+            bash os.sh
+        else
+            echo -e "${R}[✗] Cập nhật thất bại! Có xung đột dữ liệu local (conflict).${RS}"
+            echo -e "${W}Đang thử ép buộc đồng bộ với GitHub...${RS}"
+            git reset --hard "origin/$current_branch"
+            git pull origin "$current_branch"
+            echo -e "${G}[✓] Đã ép cập nhật thành công!${RS}"
+            sleep 2
+            bash os.sh
+        fi
+    fi
+}
+
 
 # ─────────────────────────────────────────────────────────
 #  CYBER LOCK
+# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────
+#  CYBER LOCK (Lưu khóa vào thư mục chỉ định)
 # ─────────────────────────────────────────────────────────
 8line() {
     echo -e "\n${C}Khởi tạo Giao thức Bảo mật...${RS}"
     echo -ne "${Y}Tạo Khóa Truy cập: ${RS}"
     read -s new_pass
     echo
+
+    # Tạo thư mục lưu khóa nếu chưa có
+    local key_dir="/storage/emulated/0/Termux-os"
+    mkdir -p "$key_dir"
+
+    # Lưu mật khẩu vào file key
+    printf '%s' "$new_pass" > "$key_dir/key"
+    echo -e "${G}Đã lưu mật khẩu vào: ${key_dir}/key${RS}"
 
     local safe_pass
     safe_pass=$(printf '%s' "$new_pass" | sed "s/'/'\\\\''/g")
@@ -92,9 +154,21 @@ while [ \$attempt -le 3 ]; do
     printf '\n\033[1;96m╔══════════════════════════════════════╗\n'
     printf '║        \033[1;31mTRUY CẬP SHELL BẢO MẬT           \033[1;96m║\n'
     printf '╚══════════════════════════════════════╝\033[0m\n'
-    printf '\033[1;93m [Attempt %s/3] Enter Key: \033[0m' "\$attempt"
+    printf '\033[1;93m [Attempt %s/3] Enter Key (Ấn Enter để xem Key): \033[0m' "\$attempt"
     read -s pass_input
-    echo
+    
+    # Nếu người dùng chỉ ấn Enter (không nhập gì), in ra nội dung file key
+    if [ -z "\$pass_input" ]; then
+        if [ -f "/storage/emulated/0/Termux-os/key" ]; then
+            echo -e "\n\033[1;32m[!] Mật khẩu của bạn là: \033[1;33m\$(cat /storage/emulated/0/Termux-os/key)\033[0m"
+        else
+            echo -e "\n\033[1;31m[!] Không tìm thấy file chứa key!\033[0m"
+        fi
+        echo -ne "\033[1;93mNhập lại Key: \033[0m"
+        read -s pass_input
+        echo
+    fi
+
     if [ "\$pass_input" = '${safe_pass}' ]; then
         printf '\033[1;32m ĐÃ CẤP QUYỀN.\033[0m\n'
         sleep 1
@@ -134,10 +208,13 @@ LOCKEOF
 9line() {
     sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.bashrc
     [ -f ~/.zshrc ] && sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.zshrc
-    echo -e "${R}Đã hủy kích hoạt Giao thức Bảo mật.${RS}"
+    # Xóa luôn file key nếu muốn
+    rm -f /storage/emulated/0/Termux-os/key
+    echo -e "${R}Đã hủy kích hoạt Giao thức Bảo mật và xóa file Key.${RS}"
     sleep 2
     menu
 }
+
 
 # ─────────────────────────────────────────────────────────
 #  SMART MODE — dùng trong REPL và cài vào shell
