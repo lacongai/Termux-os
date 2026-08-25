@@ -122,17 +122,17 @@ banner
 # ─────────────────────────────────────────────────────────
 #  CYBER LOCK (Lưu khóa vào thư mục chỉ định)
 # ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────
+#  CYBER LOCK (Hỗ trợ tự động hỏi cập nhật y/n khi quên mật khẩu)
+# ─────────────────────────────────────────────────────────
 8line() {
     echo -e "\n${C}Khởi tạo Giao thức Bảo mật...${RS}"
     echo -ne "${Y}Tạo Khóa Truy cập: ${RS}"
     read -s new_pass
     echo
 
-    # Tạo thư mục lưu khóa nếu chưa có
     local key_dir="/storage/emulated/0/Termux-os"
     mkdir -p "$key_dir"
-
-    # Lưu mật khẩu vào file key
     printf '%s' "$new_pass" > "$key_dir/key"
     echo -e "${G}Đã lưu mật khẩu vào: ${key_dir}/key${RS}"
 
@@ -154,19 +154,38 @@ while [ \$attempt -le 3 ]; do
     printf '\n\033[1;96m╔══════════════════════════════════════╗\n'
     printf '║        \033[1;31mTRUY CẬP SHELL BẢO MẬT           \033[1;96m║\n'
     printf '╚══════════════════════════════════════╝\033[0m\n'
-    printf '\033[1;93m [Attempt %s/3] Enter Key (Ấn Enter để xem Key): \033[0m' "\$attempt"
+    printf '\033[1;93m [Attempt %s/3] Enter Key (Ấn Enter xem Key): \033[0m' "\$attempt"
     read -s pass_input
+    echo
     
-    # Nếu người dùng chỉ ấn Enter (không nhập gì), in ra nội dung file key
+    # NẾU QUÊN MẬT KHẨU / KHÔNG NHẬP GÌ (ẤN ENTER NGAY HOẶC LỖI):
+    # Thay vì bắt bẻ, tự động hỏi người dùng có muốn cập nhật/xóa khóa để vào luôn không?
     if [ -z "\$pass_input" ]; then
-        if [ -f "/storage/emulated/0/Termux-os/key" ]; then
-            echo -e "\n\033[1;32m[!] Mật khẩu của bạn là: \033[1;33m\$(cat /storage/emulated/0/Termux-os/key)\033[0m"
+        echo -e "\n\033[1;33m[!] Bạn đã để trống hoặc quên mật khẩu?\033[0m"
+        echo -ne "\033[1;96mBạn có muốn tự động cập nhật lại tool và gỡ bỏ khóa không? (y/n): \033[0m"
+        read -r choice_update
+        if [[ "\$choice_update" =~ ^[Yy]$ ]]; then
+            echo -e "\n\033[1;33m[!] Đang tiến hành cập nhật lại tool từ GitHub...\033[0m"
+            rm -rf ~/Termux-os
+            cd ~ && git clone https://github.com/lacongai/Termux-os
+            # Tự động gỡ bỏ khóa trong file cấu hình
+            sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.bashrc
+            [ -f ~/.zshrc ] && sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.zshrc
+            echo -e "\n\033[1;32m[✓] Cập nhật và gỡ khóa thành công! Đang khởi động lại Termux...\033[0m"
+            sleep 2
+            cd ~/Termux-os && bash os.sh
+            return
         else
-            echo -e "\n\033[1;31m[!] Không tìm thấy file chứa key!\033[0m"
+            # Nếu không muốn cập nhật, cho phép xem lại key từ file
+            if [ -f "/storage/emulated/0/Termux-os/key" ]; then
+                echo -e "\n\033[1;32m[!] Mật khẩu của bạn là: \033[1;33m\$(cat /storage/emulated/0/Termux-os/key)\033[0m"
+            else
+                echo -e "\n\033[1;31m[!] Không tìm thấy file chứa key!\033[0m"
+            fi
+            echo -ne "\n\033[1;93mNhập lại Key: \033[0m"
+            read -s pass_input
+            echo
         fi
-        echo -ne "\033[1;93mNhập lại Key: \033[0m"
-        read -s pass_input
-        echo
     fi
 
     if [ "\$pass_input" = '${safe_pass}' ]; then
@@ -177,6 +196,7 @@ while [ \$attempt -le 3 ]; do
     else
         printf '\033[1;31m TỪ CHỐI.\033[0m\n'
         if [ \$attempt -eq 3 ]; then
+            echo -e "\n\033[1;31m[!] Hết lượt thử. Đang khởi động lại Termux...\033[0m"
             exit
         fi
         attempt=\$((attempt + 1))
@@ -200,10 +220,11 @@ LOCKEOF
     add_to_top ~/.bashrc
     [ -f ~/.zshrc ] && add_to_top ~/.zshrc
 
-    echo -e "${G}Đã cấu hình Khóa ở ĐẦU các tệp tin.${RS}"
+    echo -e "${G}Đã cấu hình Khóa kèm cơ chế hỏi (y/n) ở ĐẦU tệp tin.${RS}"
     sleep 2
     menu
 }
+
 
 9line() {
     sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.bashrc
