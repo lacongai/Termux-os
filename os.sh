@@ -88,15 +88,19 @@ _auto_update_check() {
         read -r _ans
         if [ -z "$_ans" ] || [[ "$_ans" =~ ^[Yy]$ ]]; then
             if git pull origin "$branch" &>/dev/null; then
-                echo -e "${G}[✓] Đã cập nhật! Đang khởi động lại...${RS}"
+                echo -e "${G}[✓] Đã cập nhật!${RS}"
                 sleep 1
-                exec bash ~/Termux-os/os.sh
+                cd $HOME
+                bash ~/Termux-os/os.sh
+                exit 0
             else
                 git reset --hard "origin/$branch" &>/dev/null
                 git pull origin "$branch" &>/dev/null
                 echo -e "${G}[✓] Đã ép cập nhật!${RS}"
                 sleep 1
-                exec bash ~/Termux-os/os.sh
+                cd $HOME
+                bash ~/Termux-os/os.sh
+                exit 0
             fi
         fi
     fi
@@ -230,11 +234,11 @@ _auto_update_check
     echo ""
     sleep 4
     cd $HOME
-    exec bash ~/Termux-os/os.sh
+    menu
 }
 
 # ══════════════════════════════════════════════════════════
-#  Các hàm chức năng
+#  Các hàm chức năng — KHÔNG DÙNG exec
 # ══════════════════════════════════════════════════════════
 2line() {
     cd $HOME
@@ -244,40 +248,99 @@ _auto_update_check
     [ -f ~/.oh-my-zsh/templates/zshrc.zsh-template ] && \
         cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
     cd $HOME
-    exec bash ~/Termux-os/os.sh
+    echo ""
+    echo -e "${G}[✓] Đã thiết lập Zsh xong. Nhấn Enter để tiếp tục...${RS}"
+    read -r
+    menu
 }
-3line() { cd $HOME; pkg install zsh -y; chsh -s zsh; exec bash ~/Termux-os/os.sh; }
-4line() { cd $HOME; chsh -s bash; exec bash ~/Termux-os/os.sh; }
+3line() {
+    cd $HOME
+    pkg install zsh -y
+    chsh -s zsh
+    echo ""
+    echo -e "${G}[✓] Đã chuyển sang Zsh.${RS}"
+    sleep 2
+    menu
+}
+4line() {
+    cd $HOME
+    chsh -s bash
+    echo ""
+    echo -e "${G}[✓] Đã chuyển sang Bash.${RS}"
+    sleep 2
+    menu
+}
 5line() {
     cd $HOME
     rm -f ~/.zshrc
     [ -d ~/Termux-os/.object ] && cd ~/Termux-os/.object && bash .2.sh
-    clear
     cd $HOME
-    exec bash ~/Termux-os/os.sh
+    echo ""
+    echo -e "${G}[✓] Đã cài Banner Zsh. Nhấn Enter để tiếp tục...${RS}"
+    read -r
+    menu
 }
 6line() {
     cd $HOME
     [ -d ~/Termux-os/.object ] && cd ~/Termux-os/.object && bash .1.sh
-    clear
     cd $HOME
-    exec bash ~/Termux-os/os.sh
+    echo ""
+    echo -e "${G}[✓] Đã cài Giao diện Zsh. Nhấn Enter để tiếp tục...${RS}"
+    read -r
+    menu
 }
 7line() {
     cd $HOME
     rm -f ~/.zshrc
     chsh -s zsh
     [ -f ~/Termux-os/.object/.3.sh ] && bash ~/Termux-os/.object/.3.sh
-    clear
     cd $HOME
-    exec bash ~/Termux-os/os.sh
+    echo ""
+    echo -e "${G}[✓] Đã cài Tô sáng / Gợi ý. Nhấn Enter để tiếp tục...${RS}"
+    read -r
+    menu
 }
 10line() {
     cd $HOME
-    rm -rf ~/Termux-os
-    git clone https://github.com/lacongai/Termux-os ~/Termux-os
-    cd $HOME
-    [ -f ~/Termux-os/os.sh ] && exec bash ~/Termux-os/os.sh
+    if [ ! -d ~/Termux-os/.git ]; then
+        echo -e "${Y}[!] Không phải Git repo. Cài lại từ đầu...${RS}"
+        rm -rf ~/Termux-os
+        git clone https://github.com/lacongai/Termux-os ~/Termux-os
+        cd $HOME
+        bash ~/Termux-os/os.sh
+        exit 0
+    fi
+
+    cd ~/Termux-os
+    git fetch origin &>/dev/null
+    local current_branch
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
+    local local_commit remote_commit
+    local_commit=$(git rev-parse HEAD)
+    remote_commit=$(git rev-parse "origin/$current_branch")
+
+    if [ "$local_commit" = "$remote_commit" ]; then
+        echo -e "${G}[✓] Tool đang là phiên bản mới nhất!${RS}"
+        sleep 2
+        menu
+    else
+        echo -e "${Y}[!] Phát hiện phiên bản mới! Đang cập nhật...${RS}"
+        if git pull origin "$current_branch"; then
+            echo -e "${G}[✓] Cập nhật thành công!${RS}"
+            sleep 2
+            cd $HOME
+            bash ~/Termux-os/os.sh
+            exit 0
+        else
+            git reset --hard "origin/$current_branch"
+            git pull origin "$current_branch"
+            echo -e "${G}[✓] Đã ép cập nhật!${RS}"
+            sleep 2
+            cd $HOME
+            bash ~/Termux-os/os.sh
+            exit 0
+        fi
+    fi
 }
 
 # ─────────────────────────────────────────────────────────
@@ -327,7 +390,7 @@ while [ \$attempt -le 3 ]; do
             [ -f ~/.zshrc ] && sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.zshrc
             echo -e "\n\033[1;32m[✓] Cập nhật và gỡ khóa thành công!\033[0m"
             sleep 2
-            cd ~/Termux-os && exec bash ~/Termux-os/os.sh
+            cd ~/Termux-os && bash ~/Termux-os/os.sh
             return
         else
             if [ -f "/storage/emulated/0/Termux-os/key" ]; then
