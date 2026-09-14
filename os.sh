@@ -59,7 +59,32 @@ banner
 1line() { 
     apt update && apt upgrade -y
     pkg install zsh git figlet toilet ruby wget curl -y
-    gem install lolcat
+    
+    # ── Cài lolcat (gem Ruby) với fallback ──
+    if ! command -v lolcat &>/dev/null; then
+        echo -e "${Y}[*] Đang cài lolcat...${RS}"
+        gem install lolcat 2>/dev/null
+        if ! command -v lolcat &>/dev/null; then
+            echo -e "${Y}[!] gem install thất bại — thử pkg...${RS}"
+            pkg install -y ruby 2>/dev/null
+            gem install lolcat 2>/dev/null
+        fi
+        # Fallback cuối: tạo wrapper dùng cat nếu vẫn fail
+        if ! command -v lolcat &>/dev/null; then
+            echo -e "${Y}[!] Không cài được lolcat — tạo wrapper fallback${RS}"
+            mkdir -p $PREFIX/bin 2>/dev/null
+            cat > $PREFIX/bin/lolcat << 'LOLCAT_EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# Fallback wrapper — dùng cat khi gem lolcat không cài được
+cat
+LOLCAT_EOF
+            chmod +x $PREFIX/bin/lolcat
+            echo -e "${G}[✓] Đã tạo wrapper lolcat (fallback cat)${RS}"
+        else
+            echo -e "${G}[✓] lolcat đã cài thành công${RS}"
+        fi
+    fi
+    
     clear
     cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf
     git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh 2>/dev/null
@@ -72,7 +97,7 @@ banner
     curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf 2>/dev/null
     clear
     
-    # ═══ TỰ ĐỘNG FIX LỖI FONT / % / .zshrc ═══
+    # ═══ TỰ ĐỘNG FIX LỖI ═══
     echo -e "\n${C}╔══════════════════════════════════════════╗${RS}"
     echo -e "${C}║   ${Y}🔧  ĐANG FIX LỖI TỰ ĐỘNG  🔧${C}          ║${RS}"
     echo -e "${C}╚══════════════════════════════════════════╝${RS}\n"
