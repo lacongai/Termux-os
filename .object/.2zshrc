@@ -7,8 +7,11 @@ source $HOME/.oh-my-zsh/oh-my-zsh.sh
 [[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 [[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
-# app.py, run.sh, index.js ... hiện màu vàng trên prompt (unknown-token)
 ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+cd $HOME 2>/dev/null
+
+unsetopt NOMATCH 2>/dev/null
+unsetopt PROMPT_SP 2>/dev/null
 
 clear
 echo -e "\033[1;32m[*] ĐANG KHỞI ĐỘNG TERMUX-OS v2..."
