@@ -25,12 +25,12 @@ ZSH_HIGHLIGHT_STYLES[function]='fg=green,bold'
 ZSH_HIGHLIGHT_STYLES[precommand]='fg=green,bold'
 ZSH_HIGHLIGHT_STYLES[hashed-command]='fg=green,bold'
 
-# Path (khi có cd) → XANH LÁ (đồng màu command)
-ZSH_HIGHLIGHT_STYLES[path]='fg=green,bold'
-ZSH_HIGHLIGHT_STYLES[path_prefix]='fg=green,bold'
-ZSH_HIGHLIGHT_STYLES[path_pathseparator]='fg=green,bold'
+# Path → VÀNG
+ZSH_HIGHLIGHT_STYLES[path]='fg=yellow,bold'
+ZSH_HIGHLIGHT_STYLES[path_prefix]='fg=yellow,bold'
+ZSH_HIGHLIGHT_STYLES[path_pathseparator]='fg=yellow,bold'
 
-# Argument đầu tiên (subcommand) → XANH LÁ
+# Argument đầu tiên → XANH LÁ hoặc VÀNG tùy ngữ cảnh
 ZSH_HIGHLIGHT_STYLES[arg0]='fg=green,bold'
 
 # Chuỗi → XANH LÁ
@@ -56,7 +56,7 @@ ZSH_HIGHLIGHT_PATTERNS+=('*.php'  'fg=yellow,bold')
 ZSH_HIGHLIGHT_PATTERNS+=('*.java' 'fg=yellow,bold')
 
 # ══════════════════════════════════════════════════════════
-#  ZLE HOOK: tô màu TOÀN DÒNG theo ngữ cảnh
+#  ZLE HOOK: tô màu TOÀN DÒNG theo ngữ cảnh (Bỏ màu trắng)
 # ══════════════════════════════════════════════════════════
 autoload -Uz add-zle-hook-widget 2>/dev/null
 
@@ -67,47 +67,43 @@ _sr_full_line_color() {
     local trimmed="${buf#"${buf%%[! ]*}"}"
     local first="${buf%% *}"
 
-    # 1. Path thuần (bắt đầu bằng / hoặc ~)
+    # 1. Path thuần (bắt đầu bằng / hoặc ~) → VÀNG TOÀN DÒNG
     if [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
-        local path="${trimmed%/}"
-        path="${path/#\~/$HOME}"
-        local path_unescaped="${path//\\ / }"
-        if [[ -d "$path_unescaped" || -d "$path" || -f "$path_unescaped" || -f "$path" ]]; then
-            region_highlight=("0 ${#buf} fg=yellow,bold")
-        fi
+        region_highlight=("0 ${#buf} fg=yellow,bold")
         return
     fi
 
-    # 2. Command hợp lệ → tô XANH LÁ toàn dòng
+    # 2. File đuôi (ví dụ app.py) → VÀNG TOÀN DÒNG
+    if [[ "$first" == *.* && ! command -v "$first" &>/dev/null ]]; then
+        region_highlight=("0 ${#buf} fg=yellow,bold")
+        return
+    fi
+
+    # 3. Command hợp lệ (python, cd, ls...) → XANH LÁ TOÀN DÒNG
     if command -v "$first" &>/dev/null; then
         region_highlight=("0 ${#buf} fg=green,bold")
-        return
-    fi
-
-    # 3. File .py/.sh/... tồn tại → VÀNG
-    if [[ "$first" == *.* && -f "$first" ]]; then
-        region_highlight=("0 ${#buf} fg=yellow,bold")
         return
     fi
 }
 add-zle-hook-widget line-pre-redraw _sr_full_line_color 2>/dev/null
 
 # ══════════════════════════════════════════════════════════
-#  SMART ACCEPT: ẩn cd, tự chạy cd/python khi Enter
+#  SMART ACCEPT: cd ngầm không đổi chữ thành 'cd ...'
 # ══════════════════════════════════════════════════════════
 _smart_accept_line() {
     local buf="$BUFFER"
     local trimmed="${buf#"${buf%%[! ]*}"}"
     trimmed="${trimmed%"${trimmed##*[! ]}"}"
 
-    # Nếu là path thuần → chuyển thành lệnh cd đầy đủ trong buffer
+    # Nếu là path thuần → cd ngầm và xoá buffer sạch
     if [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
         local path="${trimmed%/}"
         path="${path/#\~/$HOME}"
         local path_unescaped="${path//\\ / }"
         if [[ -d "$path_unescaped" || -d "$path" ]]; then
-            BUFFER="cd ${(q)path_unescaped}"
-            zle .accept-line
+            cd "$path_unescaped"
+            BUFFER=""
+            zle accept-line
             return
         fi
     fi
