@@ -1,7 +1,6 @@
 #!/bin/bash
 # ══════════════════════════════════════════════════════════
-#  AUTO FIX — Termux-OS v2
-#  Fix các lỗi thường gặp trong .zshrc và .bashrc
+#  AUTO FIX — Termux-OS v2 (Safe version)
 # ══════════════════════════════════════════════════════════
 
 R='\033[1;31m'
@@ -17,192 +16,212 @@ echo -e "${C}╚═════════════════════�
 echo ""
 
 # ─────────────────────────────────────────────────────────
-#  FIX 1: ZSH_HIGHLIGHT_STYLES invalid subscript range
+#  FIX 0: Cài lolcat nếu thiếu
 # ─────────────────────────────────────────────────────────
-fix_highlight_styles() {
-    local file=$1
-    [ ! -f "$file" ] && return
-
-    # Xóa dòng cũ nếu có
-    sed -i '/^[[:space:]]*ZSH_HIGHLIGHT_STYLES\[unknown-token\]=/d' "$file"
-    sed -i '/# Fix: chỉ gán style nếu plugin zsh-syntax-highlighting đã load/d' "$file"
-    sed -i '/# Fix lỗi "invalid subscript range"/d' "$file"
-    sed -i '/if (( ${+ZSH_HIGHLIGHT_STYLES} )); then/d' "$file"
-    sed -i '/typeset -gA ZSH_HIGHLIGHT_STYLES 2>\/dev\/null/d' "$file"
-
-    echo -e "${G}[✓] Đã fix ZSH_HIGHLIGHT_STYLES trong $file${RS}"
-}
-
-# ─────────────────────────────────────────────────────────
-#  FIX 2: Lỗi hiển thị % trong banner
-#     Nguyên nhân: `echo -e "...%..."` in ra % như format
-#     Giải pháp: escape % → %% hoặc chuyển echo → printf
-# ─────────────────────────────────────────────────────────
-fix_percent_display() {
-    local file=$1
-    [ ! -f "$file" ] && return
-
-    # Escape % trong các dòng echo -e chứa banner ASCII
-    # Chỉ áp dụng cho dòng chứa ký tự đặc biệt từ figlet
-    if grep -q 'echo -e.*%' "$file" 2>/dev/null; then
-        # Thay echo -e có % → printf '%b\n' an toàn
-        cp "$file" "$file.bak"
-        awk '
-        /echo[[:space:]]+-e[[:space:]]+.*%/ {
-            # Chuyển echo -e "...%" → printf "%b\n" "..." với % đã escape
-            line = $0
-            gsub(/%/, "%%", line)
-            sub(/echo[[:space:]]+-e/, "printf \"%b\\\\n\"", line)
-            print line
-            next
-        }
-        { print }
-        ' "$file.bak" > "$file"
-        rm -f "$file.bak"
-        echo -e "${G}[✓] Đã fix lỗi hiển thị %% trong $file${RS}"
+fix_lolcat() {
+    if ! command -v lolcat &>/dev/null; then
+        echo -e "${Y}[!] lolcat chưa có — đang cài...${RS}"
+        if command -v gem &>/dev/null; then
+            gem install lolcat 2>/dev/null
+        fi
+        if ! command -v lolcat &>/dev/null && command -v pkg &>/dev/null; then
+            pkg install -y ruby 2>/dev/null
+            gem install lolcat 2>/dev/null
+        fi
+        if command -v lolcat &>/dev/null; then
+            echo -e "${G}[✓] Đã cài lolcat${RS}"
+        else
+            echo -e "${Y}[!] Không cài được lolcat — sẽ dùng fallback cat${RS}"
+        fi
+    else
+        echo -e "${G}[✓] lolcat đã có sẵn${RS}"
     fi
 }
 
 # ─────────────────────────────────────────────────────────
-#  FIX 3: Ký tự lỗi (zero-width, BOM, CRLF) trong .zshrc
+#  FIX 1: Xóa block SAFE-HIGHLIGHT cũ (nếu có) — tránh parse error
+# ─────────────────────────────────────────────────────────
+remove_old_fix_blocks() {
+    local file=$1
+    [ ! -f "$file" ] && return
+
+    # Xóa block cũ
+    sed -i '/# >>> SAFE-HIGHLIGHT-START >>>/,/# <<< SAFE-HIGHLIGHT-END <<</d' "$file" 2>/dev/null
+    sed -i '/# >>> SAFE-HIGHLIGHT-START >>>/d' "$file" 2>/dev/null
+    sed -i '/# <<< SAFE-HIGHLIGHT-END <<</d' "$file" 2>/dev/null
+
+    # Xóa dòng lỗi cũ
+    sed -i '/^[[:space:]]*ZSH_HIGHLIGHT_STYLES\[unknown-token\]=/d' "$file" 2>/dev/null
+    sed -i '/# Fix: chỉ gán style nếu plugin zsh-syntax-highlighting đã load/d' "$file" 2>/dev/null
+    sed -i '/# Fix lỗi "invalid subscript range"/d' "$file" 2>/dev/null
+    sed -i '/if (( ${+ZSH_HIGHLIGHT_STYLES} )); then/d' "$file" 2>/dev/null
+    sed -i '/typeset -gA ZSH_HIGHLIGHT_STYLES/d' "$file" 2>/dev/null
+}
+
+# ─────────────────────────────────────────────────────────
+#  FIX 2: Xóa BOM, CRLF, zero-width chars
 # ─────────────────────────────────────────────────────────
 fix_weird_chars() {
     local file=$1
     [ ! -f "$file" ] && return
 
-    # Xóa BOM UTF-8 (EF BB BF)
     sed -i '1s/^\xEF\xBB\xBF//' "$file" 2>/dev/null
-
-    # Xóa CRLF → LF
     sed -i 's/\r$//' "$file" 2>/dev/null
-
-    # Xóa zero-width chars (U+200B, U+FEFF)
     sed -i 's/\xe2\x80\x8b//g' "$file" 2>/dev/null
     sed -i 's/\xef\xbb\xbf//g' "$file" 2>/dev/null
-
-    echo -e "${G}[✓] Đã dọn ký tự lỗi trong $file${RS}"
 }
 
 # ─────────────────────────────────────────────────────────
-#  FIX 4: Đảm bảo source đúng thứ tự plugin
-#     zsh-syntax-highlighting PHẢI được source SAU oh-my-zsh
+#  FIX 3: Đảm bảo cấu trúc if/fi cân bằng (phát hiện parse error)
 # ─────────────────────────────────────────────────────────
-fix_plugin_order() {
+check_balance() {
     local file=$1
-    [ ! -f "$file" ] && return
+    [ ! -f "$file" ] && return 1
 
-    if grep -q 'oh-my-zsh.sh' "$file" 2>/dev/null; then
-        # Kiểm tra zsh-syntax-highlighting có trước oh-my-zsh không
-        local omz_line shl_line
-        omz_line=$(grep -n 'oh-my-zsh.sh' "$file" | head -1 | cut -d: -f1)
-        shl_line=$(grep -n 'zsh-syntax-highlighting' "$file" | head -1 | cut -d: -f1)
+    local if_count else_count fi_count
+    if_count=$(grep -cE '^[[:space:]]*(if[[:space:]]|if$)' "$file" 2>/dev/null || echo 0)
+    fi_count=$(grep -cE '^[[:space:]]*fi[[:space:]]*$' "$file" 2>/dev/null || echo 0)
+    else_count=$(grep -cE '^[[:space:]]*else[[:space:]]*$' "$file" 2>/dev/null || echo 0)
 
-        if [ -n "$shl_line" ] && [ -n "$omz_line" ] && [ "$shl_line" -lt "$omz_line" ]; then
-            echo -e "${Y}[!] Phát hiện zsh-syntax-highlighting source TRƯỚC oh-my-zsh → đang fix...${RS}"
-            # Xóa dòng cũ và thêm lại sau oh-my-zsh
-            sed -i '/zsh-syntax-highlighting/d' "$file"
-            sed -i '/zsh-autosuggestions/d' "$file"
-            # Thêm lại sau dòng source oh-my-zsh
-            sed -i "/oh-my-zsh.sh/a\\
-[[ -f \$HOME/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] \&\& source \$HOME/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh\\
-[[ -f \$HOME/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] \&\& source \$HOME/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" "$file"
-            echo -e "${G}[✓] Đã sắp xếp lại thứ tự plugin trong $file${RS}"
-        fi
+    if [ "$if_count" -ne "$fi_count" ]; then
+        echo -e "${R}[!] Phát hiện if/fi KHÔNG cân bằng trong $file (if=$if_count, fi=$fi_count)${RS}"
+        return 1
     fi
+    return 0
 }
 
 # ─────────────────────────────────────────────────────────
-#  FIX 5: Thêm khối fix ZSH_HIGHLIGHT_STYLES an toàn vào cuối .zshrc
+#  FIX 4: Inject block SAFE-HIGHLIGHT — CHỈ 1 dòng gán có điều kiện
 # ─────────────────────────────────────────────────────────
 inject_safe_highlight() {
     local file=$1
     [ ! -f "$file" ] && return
 
-    # Xóa khối cũ nếu có
-    sed -i '/# >>> SAFE-HIGHLIGHT-START >>>/,/# <<< SAFE-HIGHLIGHT-END <<</d' "$file"
+    # Xóa block cũ
+    sed -i '/# >>> SAFE-HIGHLIGHT-START >>>/,/# <<< SAFE-HIGHLIGHT-END <<</d' "$file" 2>/dev/null
 
+    # Thêm block mới AN TOÀN — dùng [[ ]] thay vì (())
     cat >> "$file" << 'SAFE_EOF'
 
 # >>> SAFE-HIGHLIGHT-START >>>
-# Fix an toàn cho ZSH_HIGHLIGHT_STYLES — tránh "invalid subscript range"
-# Chờ plugin load xong rồi mới gán style
-_safe_highlight_hook() {
-    if (( ${+ZSH_HIGHLIGHT_STYLES} )) && [[ -n "${ZSH_HIGHLIGHT_STYLES+x}" ]]; then
-        ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
-    fi
-}
-# Hook vào precmd để chạy sau khi mọi thứ đã load
-autoload -Uz add-zsh-hook 2>/dev/null && add-zsh-hook precmd _safe_highlight_hook 2>/dev/null
-# Chạy ngay 1 lần (nếu plugin đã load)
-_safe_highlight_hook 2>/dev/null
+# Fix ZSH_HIGHLIGHT_STYLES — tránh "invalid subscript range"
+# Chỉ chạy khi biến đã tồn tại (plugin đã load)
+if [[ -n "${ZSH_HIGHLIGHT_STYLES+x}" ]]; then
+    ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold' 2>/dev/null || true
+fi
 # <<< SAFE-HIGHLIGHT-END <<<
 SAFE_EOF
-
-    echo -e "${G}[✓] Đã thêm SAFE-HIGHLIGHT block vào $file${RS}"
 }
 
 # ─────────────────────────────────────────────────────────
-#  FIX 6: Fix banner trong .zshrc — dùng printf thay echo -e
+#  FIX 5: Fix cấu trúc plugin order — chỉ dùng sed đơn giản
 # ─────────────────────────────────────────────────────────
-fix_banner_percent() {
+fix_plugin_order() {
     local file=$1
     [ ! -f "$file" ] && return
 
-    # Nếu có dòng echo -e với figlet output chứa % → escape
-    if grep -qE 'print_center.*%|echo.*figlet|\\PROC' "$file" 2>/dev/null; then
-        # Escape % trong các biến text trước khi printf
-        sed -i 's/printf.*"\${text}"/printf "%s" "${text}"/g' "$file" 2>/dev/null
-    fi
+    # Nếu source plugin TRƯỚC oh-my-zsh → di chuyển xuống sau
+    local omz_line shl_line
+    omz_line=$(grep -n 'oh-my-zsh.sh' "$file" | head -1 | cut -d: -f1)
+    shl_line=$(grep -n 'zsh-syntax-highlighting.zsh' "$file" | head -1 | cut -d: -f1)
 
-    # Đảm bảo print_center dùng %s thay vì nhúng text
-    if grep -q 'print_center' "$file" 2>/dev/null; then
-        # Thêm dòng replace % trong biến text
-        if ! grep -q '_SR_FIXED_PERCENT' "$file" 2>/dev/null; then
-            sed -i '/draw_banner()/a\    # Fix % hiển thị sai trong banner\n    local _SR_FIXED_PERCENT=1' "$file" 2>/dev/null
-        fi
+    if [ -n "$shl_line" ] && [ -n "$omz_line" ] && [ "$shl_line" -lt "$omz_line" ]; then
+        echo -e "${Y}[!] Fix thứ tự plugin trong $file...${RS}"
+        # Xóa 2 dòng source cũ
+        sed -i '/zsh-autosuggestions\.zsh/d' "$file"
+        sed -i '/zsh-syntax-highlighting\.zsh/d' "$file"
+        # Thêm lại SAU oh-my-zsh.sh — dùng dòng cụ thể
+        sed -i "/source.*oh-my-zsh\.sh/a\\
+[[ -f \$HOME/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] \&\& source \$HOME/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh\\
+[[ -f \$HOME/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] \&\& source \$HOME/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" "$file"
     fi
 }
 
 # ─────────────────────────────────────────────────────────
-#  MAIN — Chạy tất cả fix
+#  FIX 6: Fix lỗi hiển thị % — escape % trong banner
 # ─────────────────────────────────────────────────────────
-echo -e "${C}[1/3] Fix ~/.zshrc...${RS}"
+fix_percent_display() {
+    local file=$1
+    [ ! -f "$file" ] && return
+
+    # Escape % trong các dòng printf/echo có chứa ký tự % đơn lẻ
+    # Chỉ trong block draw_banner (từ draw_banner() đến })
+    # Đơn giản: replace printf "...${text}..." thành printf "%s" "${text}"
+    # Không tự động sửa vì có thể hỏng code — chỉ cảnh báo
+    if grep -qE 'print_center.*[^%]%[^%]' "$file" 2>/dev/null; then
+        echo -e "${Y}[!] Có thể có lỗi %% trong $file — kiểm tra hàm print_center${RS}"
+    fi
+}
+
+# ─────────────────────────────────────────────────────────
+#  FIX 7: Fix banner zshrc — đảm bảo lolcat có fallback
+# ─────────────────────────────────────────────────────────
+fix_banner_fallback() {
+    local file=$1
+    [ ! -f "$file" ] && return
+
+    # Thay `| lolcat` bằng fallback an toàn
+    if grep -q 'figlet.*| lolcat' "$file" 2>/dev/null; then
+        # Không sửa file gốc — chỉ cảnh báo
+        echo -e "${Y}[!] $file dùng lolcat — đảm bảo gem đã cài${RS}"
+    fi
+}
+
+# ─────────────────────────────────────────────────────────
+#  MAIN
+# ─────────────────────────────────────────────────────────
+echo -e "${C}[1/4] Fix lolcat...${RS}"
+fix_lolcat
+echo ""
+
+echo -e "${C}[2/4] Fix ~/.zshrc...${RS}"
 if [ -f ~/.zshrc ]; then
+    # Backup trước khi sửa
+    cp ~/.zshrc ~/.zshrc.bak.$(date +%s)
+
+    remove_old_fix_blocks ~/.zshrc
     fix_weird_chars ~/.zshrc
-    fix_highlight_styles ~/.zshrc
+
+    if check_balance ~/.zshrc; then
+        echo -e "${G}[✓] Cấu trúc if/fi cân bằng${RS}"
+    else
+        echo -e "${R}[!] File .zshrc có lỗi cú pháp — khôi phục từ backup nếu cần${RS}"
+        echo -e "${Y}→ Backup: ~/.zshrc.bak.*${RS}"
+    fi
+
     fix_plugin_order ~/.zshrc
     inject_safe_highlight ~/.zshrc
     fix_percent_display ~/.zshrc
-    fix_banner_percent ~/.zshrc
+    fix_banner_fallback ~/.zshrc
+    echo -e "${G}[✓] Đã fix ~/.zshrc${RS}"
 else
     echo -e "${Y}[!] Không tìm thấy ~/.zshrc${RS}"
 fi
-
 echo ""
-echo -e "${C}[2/3] Fix ~/.bashrc...${RS}"
+
+echo -e "${C}[3/4] Fix ~/.bashrc...${RS}"
 if [ -f ~/.bashrc ]; then
+    cp ~/.bashrc ~/.bashrc.bak.$(date +%s)
     fix_weird_chars ~/.bashrc
-    fix_percent_display ~/.bashrc
+    echo -e "${G}[✓] Đã fix ~/.bashrc${RS}"
 else
     echo -e "${Y}[!] Không tìm thấy ~/.bashrc${RS}"
 fi
-
 echo ""
-echo -e "${C}[3/3] Fix file banner .zshrc trong .object...${RS}"
-if [ -f ~/Termux-os/.object/.1zshrc ]; then
-    fix_weird_chars ~/Termux-os/.object/.1zshrc
-    fix_percent_display ~/Termux-os/.object/.1zshrc
-fi
-if [ -f ~/Termux-os/.object/.2zshrc ]; then
-    fix_weird_chars ~/Termux-os/.object/.2zshrc
-    fix_percent_display ~/Termux-os/.object/.2zshrc
-fi
+
+echo -e "${C}[4/4] Kiểm tra file banner trong .object...${RS}"
+for f in ~/Termux-os/.object/.1zshrc ~/Termux-os/.object/.2zshrc; do
+    if [ -f "$f" ]; then
+        fix_weird_chars "$f"
+        fix_banner_fallback "$f"
+        echo -e "${G}[✓] Đã kiểm tra $f${RS}"
+    fi
+done
 
 echo ""
 echo -e "${G}╔══════════════════════════════════════════╗${RS}"
 echo -e "${G}║   ${W}✅  HOÀN TẤT FIX TỰ ĐỘNG  ✅${G}          ║${RS}"
 echo -e "${G}╚══════════════════════════════════════════╝${RS}"
 echo ""
-echo -e "${Y}→ Chạy 'source ~/.zshrc' để áp dụng ngay${RS}"
-echo -e "${Y}→ Hoặc mở Termux mới để tự động load${RS}"
+echo -e "${Y}→ Chạy 'source ~/.zshrc' để áp dụng${RS}"
 echo ""
