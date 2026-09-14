@@ -31,7 +31,7 @@ banner() {
     echo -e "\033[1;36m ______                              \033[1;31m  ___  ____"
     echo -e "\033[1;36m/_  __/__  _________ ___  __  ___  __\033[1;31m / _ \/ __/"
     echo -e "\033[1;36m / / / _ \/ ___/ __ '__ \/ / / / |/_/\033[1;31m/ // /\ \  "
-    echo -e "\033[1;36m/_/  \___/_/  /_/ /_/ /_/\__,_/_/|_| \033[1;31m\___/___/  "
+    echo -e "\033[1;36m/_/  \___/\__,_/_/|_| \033[1;31m\___/___/  "
     echo -e ""
     echo -e "\033[1;97m      --[ \033[1;32mCông Cụ Tối Ưu Termux \033[1;97m]--       "
     echo -e ""
@@ -45,77 +45,105 @@ banner() {
 }
 
 # ══════════════════════════════════════════════════════════
-#  1line — GIỐNG BẢN GỐC + 2 GIAI ĐOẠN
-#  Lần 1: cài đầy đủ → tạo flag → quay lại menu chọn chức năng
-#  Lần 2+: cài lại lệnh → reload settings → thoát app
+#  BANNER 7 MÀU — tự phát hiện lolcat hoặc toilet
+# ══════════════════════════════════════════════════════════
+_banner_7mau() {
+    local text="$1"
+    local font="$2"
+    local width="$3"
+
+    # Ưu tiên 1: lolcat (nếu cài được trên Termux cũ)
+    if command -v lolcat &>/dev/null; then
+        if echo "x" | lolcat &>/dev/null; then
+            figlet -c -f "$font" -w "$width" "$text" 2>/dev/null | lolcat -f
+            return $?
+        fi
+    fi
+
+    # Ưu tiên 2: toilet --gay (Android cao / Termux mới)
+    if command -v toilet &>/dev/null; then
+        toilet -f "$font" -w "$width" --gay "$text" 2>/dev/null && return $?
+        toilet -w "$width" --gay "$text" 2>/dev/null && return $?
+    fi
+
+    # Fallback cuối: figlet thuần (không màu)
+    figlet -c -f "$font" -w "$width" "$text" 2>/dev/null || \
+        figlet -c "$text" 2>/dev/null || \
+        echo "  $text  "
+}
+
+# ══════════════════════════════════════════════════════════
+#  1line — 2 GIAI ĐOẠN, tự phát hiện lolcat/toilet
 # ══════════════════════════════════════════════════════════
 1line() {
     local FLAG="$HOME/.termux-os-installed"
 
-    # ══════════════════════════════════════════════════════════
-    #  KILL ALL TERMUX TABS — helper
-    # ══════════════════════════════════════════════════════════
+    # ── Helper kill tabs ────────────────────────────────────
     _kill_all_tabs() {
         local my_pid=$$
-        # Kill tất cả shell con (zsh, bash, sh) trừ shell hiện tại
         for shell in zsh bash sh; do
             for pid in $(pgrep -f "/$shell" 2>/dev/null); do
                 [ "$pid" != "$my_pid" ] && kill -TERM "$pid" 2>/dev/null || true
             done
         done
         sleep 0.3
-        # Kill lần 2 với SIGKILL cho process cứng đầu
         for shell in zsh bash sh; do
             for pid in $(pgrep -f "/$shell" 2>/dev/null); do
                 [ "$pid" != "$my_pid" ] && kill -9 "$pid" 2>/dev/null || true
             done
         done
-        # Kill session process của Termux (không phải app chính)
         for pid in $(pgrep -f "com.termux/files/usr/bin" 2>/dev/null); do
             [ "$pid" != "$my_pid" ] && kill -9 "$pid" 2>/dev/null || true
         done
     }
 
+    # ── Helper cài lolcat hoặc toilet ───────────────────────
+    _install_banner_tool() {
+        echo -e "${C}[*] Cài công cụ banner 7 màu...${RS}"
+
+        # Thử cài lolcat trước (Android cũ)
+        if ! command -v lolcat &>/dev/null || ! lolcat --version &>/dev/null 2>&1; then
+            rm -f "$PREFIX/bin/lolcat" 2>/dev/null
+            # Thử gem install với timeout (tránh treo)
+            timeout 20 gem install lolcat --no-document &>/dev/null || true
+        fi
+
+        # Kiểm tra lolcat có chạy được không
+        if command -v lolcat &>/dev/null && echo "x" | lolcat &>/dev/null 2>&1; then
+            echo -e "${G}[✓] lolcat hoạt động — dùng lolcat cho banner${RS}"
+        else
+            # lolcat không chạy được → dùng toilet --gay
+            echo -e "${Y}[!] lolcat không chạy (Android cao) → dùng toilet --gay${RS}"
+            rm -f "$PREFIX/bin/lolcat" 2>/dev/null
+            pkg install toilet -y 2>/dev/null || true
+        fi
+    }
+
     # ══════════════════════════════════════════════════════════
-    #  LẦN 2+ : cài lại đầy đủ → kill tabs → EXIT
+    #  LẦN 2+ : cài lại → kill tabs → EXIT
     # ══════════════════════════════════════════════════════════
     if [ -f "$FLAG" ]; then
         echo -e "\n${Y}[Lần 2+] Đang cài lại các lệnh và làm mới cấu hình...${RS}\n"
 
-        # 1. Cập nhật apt
+        # 1. apt
         apt update && apt upgrade -y
 
-        # 2. Cài gói cơ bản (bỏ exa → dùng eza)
+        # 2. Gói cơ bản
         pkg install zsh git figlet toilet ruby wget curl -y
         pkg install eza -y 2>/dev/null || true
 
-        # 3. Cài lolcat đảm bảo (fix lỗi "can't find gem lolcat")
-        echo -e "${C}[*] Cài lolcat...${RS}"
-        if ! command -v lolcat &>/dev/null || ! lolcat --version &>/dev/null 2>&1; then
-            # Xóa bin cũ nếu hỏng
-            rm -f "$PREFIX/bin/lolcat" 2>/dev/null
-            # Cài qua gem
-            gem install lolcat --no-document 2>&1 | tail -2
-            # Nếu vẫn fail → cài ruby trước rồi gem lại
-            if ! command -v lolcat &>/dev/null; then
-                pkg install ruby -y 2>/dev/null || true
-                gem install lolcat --no-document 2>&1 | tail -2
-            fi
-            # Fallback cuối: cài gói lolcat qua pkg (nếu có)
-            if ! command -v lolcat &>/dev/null; then
-                pkg install lolcat -y 2>/dev/null || true
-            fi
-        fi
+        # 3. Cài banner tool (lolcat hoặc toilet)
+        _install_banner_tool
 
-        # 4. Clear + copy figlet font
+        # 4. Clear + figlet font
         clear
         cd ~/Termux-os/.object/ && \
             cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
 
-        # 5. Cài lại toilet figlet (phòng khi thiếu)
+        # 5. toilet figlet
         pkg install toilet figlet -y 2>/dev/null || true
 
-        # 6. Vào thư mục .object + copy config Termux
+        # 6. Config Termux
         cd ~/Termux-os/.object 2>/dev/null
         rm -rf ~/.termux/colors.properties
         rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
@@ -123,27 +151,26 @@ banner() {
         cp -r .colors.properties ~/.termux/colors.properties
         cp -r .termux.properties ~/.termux.properties
 
-        # 7. Tải font FiraCode Nerd Font
+        # 7. Font
         curl -L --max-time 60 \
             https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
             > ~/.termux/font.ttf 2>/dev/null || true
 
-        # 8. Clear + về thư mục gốc tool
+        # 8. Clear + về thư mục gốc
         clear
         cd ~/Termux-os
 
         # 9. Reload settings
         termux-reload-settings 2>/dev/null || true
 
-        # 10. Kill tất cả các tab Termux
+        # 10. Kill tabs
         echo -e "\n${C}[*] Đang đóng tất cả các tab Termux...${RS}"
         sleep 1
         _kill_all_tabs
 
-        # 11. Thông báo + thoát
+        # 11. Thoát
         echo -e "\n${G}[✓] Đã cài lại xong. Đang đóng Termux...${RS}"
         sleep 1
-        # Đưa app về nền phòng trường hợp kill không thành công
         input keyevent KEYCODE_HOME 2>/dev/null || true
         sleep 1
         clear
@@ -151,46 +178,35 @@ banner() {
     fi
 
     # ══════════════════════════════════════════════════════════
-    #  LẦN 1 : cài đầy đủ (giống bản gốc) → tạo flag → menu
+    #  LẦN 1 : cài đầy đủ → flag → menu
     # ══════════════════════════════════════════════════════════
     echo -e "\n${C}[Lần đầu] Đang cài đặt đầy đủ...${RS}\n"
 
-    # 1. Cập nhật apt
+    # 1. apt
     apt update && apt upgrade -y
 
-    # 2. Cài gói cơ bản
+    # 2. Gói cơ bản
     pkg install zsh git figlet toilet ruby wget curl -y
 
-    # 3. Cài eza (thay exa)
+    # 3. eza (thay exa)
     pkg install eza -y 2>/dev/null || true
 
-    # 4. Cài lolcat đảm bảo (fix lỗi "can't find gem lolcat")
-    echo -e "${C}[*] Cài lolcat...${RS}"
-    if ! command -v lolcat &>/dev/null || ! lolcat --version &>/dev/null 2>&1; then
-        rm -f "$PREFIX/bin/lolcat" 2>/dev/null
-        gem install lolcat --no-document 2>&1 | tail -2
-        if ! command -v lolcat &>/dev/null; then
-            pkg install ruby -y 2>/dev/null || true
-            gem install lolcat --no-document 2>&1 | tail -2
-        fi
-        if ! command -v lolcat &>/dev/null; then
-            pkg install lolcat -y 2>/dev/null || true
-        fi
-    fi
+    # 4. Banner tool
+    _install_banner_tool
 
-    # 5. Clear + copy figlet font
+    # 5. Clear + figlet font
     clear
     cd ~/Termux-os/.object/ && \
         cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
 
-    # 6. Clone Oh-My-Zsh (chỉ nếu chưa có)
+    # 6. Oh-My-Zsh
     [ ! -d ~/.oh-my-zsh ] && \
         git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
 
-    # 7. Cài lại toilet figlet cho chắc
+    # 7. toilet figlet
     pkg install toilet figlet -y 2>/dev/null || true
 
-    # 8. Copy config Termux
+    # 8. Config Termux
     cd ~/Termux-os/.object 2>/dev/null
     rm -rf ~/.termux/colors.properties
     rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
@@ -198,29 +214,29 @@ banner() {
     cp -r .colors.properties ~/.termux/colors.properties
     cp -r .termux.properties ~/.termux.properties
 
-    # 9. Tải font FiraCode Nerd Font
+    # 9. Font
     curl -L --max-time 60 \
         https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
         > ~/.termux/font.ttf 2>/dev/null || true
 
-    # 10. Clear + về thư mục gốc tool
+    # 10. Clear + về thư mục gốc
     clear
     cd ~/Termux-os
 
-    # 11. Reload settings
+    # 11. Reload
     termux-reload-settings 2>/dev/null || true
 
-    # 12. Tạo flag + quay lại menu
+    # 12. Flag + menu
     touch "$FLAG"
     echo -e "\n${G}[✓] Đã cài đặt xong!${RS}"
     echo -e "${W}→ Chọn các chức năng bạn muốn ở menu dưới.${RS}"
-    echo -e "${W}→ Sau khi xong, ấn ${Y}1${W} lần nữa để cài lại + kill tabs + thoát Termux.${RS}"
+    echo -e "${W}→ Sau khi xong, ấn ${Y}1${W} lần nữa để cài lại + kill tabs + thoát.${RS}"
     echo ""
     sleep 4
     menu
 }
 
-# ── Các hàm chức năng (giống bản gốc) ────────────────────────
+# ── Các hàm chức năng ────────────────────────────────────
 2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh; }
 3line() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh; }
 4line() { chsh -s bash; cd ~/Termux-os ; bash os.sh; }
@@ -338,7 +354,7 @@ LOCKEOF
 }
 
 # ─────────────────────────────────────────────────────────
-#  SMART MODE — tạm thời (11) + vĩnh viễn (12)
+#  SMART MODE
 # ─────────────────────────────────────────────────────────
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
@@ -348,8 +364,24 @@ if [ -z "$TMPDIR" ]; then
 fi
 mkdir -p "$TMPDIR" 2>/dev/null
 
+# ── Whitelist: KHÔNG auto-install ────────────────────────
+_is_whitelisted() {
+    case "$1" in
+        lolcat|figlet|toilet|ls|ll|la|cd|pwd|clear|echo|cat|source|exit|kill|sleep|man|help|history|which|whereis|type|alias|unalias|export|unset|set|read|printf|test|true|false)
+            return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
+
+    # Whitelist check
+    if _is_whitelisted "$cmd"; then
+        echo "zsh: command not found: $cmd"
+        return 127
+    fi
+
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
@@ -425,7 +457,7 @@ _auto_install() {
                 pkg)   ( pkg install -y "$pkg_hint" &>"$lf2"; echo $? > "$cf2" ) & ;;
                 pip)   ( pip install "$pkg_hint"    &>"$lf2"; echo $? > "$cf2" ) & ;;
                 npm)   ( npm install -g "$pkg_hint" &>"$lf2"; echo $? > "$cf2" ) & ;;
-                gem)   ( gem install "$pkg_hint"    &>"$lf2"; echo $? > "$cf2" ) & ;;
+                gem)   ( timeout 20 gem install "$pkg_hint" &>"$lf2"; echo $? > "$cf2" ) & ;;
                 cargo) ( cargo install "$pkg_hint"  &>"$lf2"; echo $? > "$cf2" ) & ;;
             esac
             _spin $! "Auto" "${manager_hint} install ${pkg_hint}..."
@@ -533,6 +565,7 @@ smart_run_cmd() {
 # SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
 
+unsetopt NOMATCH 2>/dev/null
 unsetopt PROMPT_SP 2>/dev/null
 
 (( ${+ZSH_HIGHLIGHT_STYLES} )) && ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
@@ -561,8 +594,22 @@ _smart_accept_line() {
 }
 zle -N accept-line _smart_accept_line
 
+_is_whitelisted() {
+    case "$1" in
+        lolcat|figlet|toilet|ls|ll|la|cd|pwd|clear|echo|cat|source|exit|kill|sleep|man|help|history|which|whereis|type|alias|unalias|export|unset|set|read|printf|test|true|false)
+            return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
+
+    if _is_whitelisted "$cmd"; then
+        echo "zsh: command not found: $cmd"
+        return 127
+    fi
+
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
@@ -639,7 +686,7 @@ _auto_install() {
                 pkg)   ( pkg install -y "$pkg_hint" &>"$lf2"; echo $? > "$cf2" ) & ;;
                 pip)   ( pip install "$pkg_hint"    &>"$lf2"; echo $? > "$cf2" ) & ;;
                 npm)   ( npm install -g "$pkg_hint" &>"$lf2"; echo $? > "$cf2" ) & ;;
-                gem)   ( gem install "$pkg_hint"    &>"$lf2"; echo $? > "$cf2" ) & ;;
+                gem)   ( timeout 20 gem install "$pkg_hint" &>"$lf2"; echo $? > "$cf2" ) & ;;
                 cargo) ( cargo install "$pkg_hint"  &>"$lf2"; echo $? > "$cf2" ) & ;;
             esac
             _spin $! "Auto" "${manager_hint} install ${pkg_hint}..."
@@ -686,7 +733,7 @@ _auto_install() {
     return 127
 }
 
-# ZSH: chỉ gọi AI tìm gói — KHÔNG đoán file theo đuôi
+# ZSH: chỉ gọi AI tìm gói — KHÔNG đoán file
 command_not_found_handler() {
     _auto_install "$@"
     return $?
@@ -714,8 +761,22 @@ ZSH_SMART_EOF
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
+_is_whitelisted() {
+    case "$1" in
+        lolcat|figlet|toilet|ls|ll|la|cd|pwd|clear|echo|cat|source|exit|kill|sleep|man|help|history|which|whereis|type|alias|unalias|export|unset|set|read|printf|test|true|false)
+            return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
+
+    if _is_whitelisted "$cmd"; then
+        echo "bash: command not found: $cmd"
+        return 127
+    fi
+
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
@@ -791,7 +852,7 @@ _auto_install() {
                 pkg)   ( pkg install -y "$pkg_hint" &>"$lf2"; echo $? > "$cf2" ) & ;;
                 pip)   ( pip install "$pkg_hint"    &>"$lf2"; echo $? > "$cf2" ) & ;;
                 npm)   ( npm install -g "$pkg_hint" &>"$lf2"; echo $? > "$cf2" ) & ;;
-                gem)   ( gem install "$pkg_hint"    &>"$lf2"; echo $? > "$cf2" ) & ;;
+                gem)   ( timeout 20 gem install "$pkg_hint" &>"$lf2"; echo $? > "$cf2" ) & ;;
                 cargo) ( cargo install "$pkg_hint"  &>"$lf2"; echo $? > "$cf2" ) & ;;
             esac
             _spin $! "Auto" "${manager_hint} install ${pkg_hint}..."
@@ -838,7 +899,7 @@ _auto_install() {
     return 127
 }
 
-# BASH: chỉ gọi AI tìm gói — KHÔNG đoán file theo đuôi
+# BASH: chỉ gọi AI tìm gói — KHÔNG đoán file
 command_not_found_handle() {
     _auto_install "$@"
     return $?
