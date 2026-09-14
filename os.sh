@@ -7,7 +7,6 @@ C='\033[1;96m'
 W='\033[1;97m'
 RS='\033[0m'
 
-# ── Đảm bảo script chạy từ home ─────────────────────────────
 cd $HOME 2>/dev/null || cd /data/data/com.termux/files/home
 
 term_width=$(tput cols 2>/dev/null || echo 80)
@@ -68,6 +67,45 @@ _banner_7mau() {
 }
 
 # ══════════════════════════════════════════════════════════
+#  AUTO UPDATE — chạy mỗi khi mở tool
+# ══════════════════════════════════════════════════════════
+_auto_update_check() {
+    [ ! -d ~/Termux-os/.git ] && return 0
+    command -v git &>/dev/null || return 0
+
+    cd ~/Termux-os 2>/dev/null || return 0
+    git fetch origin &>/dev/null || return 0
+
+    local branch local_c remote_c
+    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    [ -z "$branch" ] && return 0
+    local_c=$(git rev-parse HEAD 2>/dev/null)
+    remote_c=$(git rev-parse "origin/$branch" 2>/dev/null)
+
+    if [ -n "$local_c" ] && [ -n "$remote_c" ] && [ "$local_c" != "$remote_c" ]; then
+        echo -e "\n${Y}[!] Có bản cập nhật mới trên GitHub!${RS}"
+        echo -ne "${C}Cập nhật ngay? (y/n, Enter=y): ${RS}"
+        read -r _ans
+        if [ -z "$_ans" ] || [[ "$_ans" =~ ^[Yy]$ ]]; then
+            if git pull origin "$branch" &>/dev/null; then
+                echo -e "${G}[✓] Đã cập nhật! Đang khởi động lại...${RS}"
+                sleep 1
+                exec bash ~/Termux-os/os.sh
+            else
+                git reset --hard "origin/$branch" &>/dev/null
+                git pull origin "$branch" &>/dev/null
+                echo -e "${G}[✓] Đã ép cập nhật!${RS}"
+                sleep 1
+                exec bash ~/Termux-os/os.sh
+            fi
+        fi
+    fi
+}
+
+cd $HOME
+_auto_update_check
+
+# ══════════════════════════════════════════════════════════
 #  1line — 2 GIAI ĐOẠN
 # ══════════════════════════════════════════════════════════
 1line() {
@@ -111,7 +149,6 @@ _banner_7mau() {
         _install_banner_tool
 
         clear
-        # Kiểm tra .object tồn tại
         if [ -d "$HOME/Termux-os/.object" ]; then
             cd "$HOME/Termux-os/.object" || cd $HOME
             [ -f 'ANSI Shadow.flf' ] && \
@@ -129,7 +166,7 @@ _banner_7mau() {
             > ~/.termux/font.ttf 2>/dev/null || true
 
         clear
-        cd $HOME           # ← Đảm bảo về HOME
+        cd $HOME
 
         termux-reload-settings 2>/dev/null || true
 
@@ -182,7 +219,7 @@ _banner_7mau() {
         > ~/.termux/font.ttf 2>/dev/null || true
 
     clear
-    cd $HOME           # ← Đảm bảo về HOME
+    cd $HOME
 
     termux-reload-settings 2>/dev/null || true
 
@@ -193,55 +230,54 @@ _banner_7mau() {
     echo ""
     sleep 4
     cd $HOME
-    bash ~/Termux-os/os.sh
+    exec bash ~/Termux-os/os.sh
 }
 
 # ══════════════════════════════════════════════════════════
-#  Các hàm chức năng — DÙNG ĐƯỜNG DẪN TUYỆT ĐỐI
+#  Các hàm chức năng
 # ══════════════════════════════════════════════════════════
 2line() {
     cd $HOME
-    [ -d ~/.oh-my-zsh ] && rm -rf ~/.oh-my-zsh
-    git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh 2>/dev/null
+    rm -rf ~/.oh-my-zsh
     rm -f ~/.zshrc
+    git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
     [ -f ~/.oh-my-zsh/templates/zshrc.zsh-template ] && \
         cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
     cd $HOME
-    bash ~/Termux-os/os.sh
+    exec bash ~/Termux-os/os.sh
 }
-3line() { cd $HOME; pkg install zsh -y; chsh -s zsh; bash ~/Termux-os/os.sh; }
-4line() { cd $HOME; chsh -s bash; bash ~/Termux-os/os.sh; }
+3line() { cd $HOME; pkg install zsh -y; chsh -s zsh; exec bash ~/Termux-os/os.sh; }
+4line() { cd $HOME; chsh -s bash; exec bash ~/Termux-os/os.sh; }
 5line() {
     cd $HOME
     rm -f ~/.zshrc
     [ -d ~/Termux-os/.object ] && cd ~/Termux-os/.object && bash .2.sh
     clear
     cd $HOME
-    bash ~/Termux-os/os.sh
+    exec bash ~/Termux-os/os.sh
 }
 6line() {
     cd $HOME
     [ -d ~/Termux-os/.object ] && cd ~/Termux-os/.object && bash .1.sh
     clear
     cd $HOME
-    bash ~/Termux-os/os.sh
+    exec bash ~/Termux-os/os.sh
 }
 7line() {
     cd $HOME
-    [ -d ~/Termux-os/.object ] && cd ~/Termux-os/.object
     rm -f ~/.zshrc
     chsh -s zsh
     [ -f ~/Termux-os/.object/.3.sh ] && bash ~/Termux-os/.object/.3.sh
     clear
     cd $HOME
-    bash ~/Termux-os/os.sh
+    exec bash ~/Termux-os/os.sh
 }
 10line() {
     cd $HOME
     rm -rf ~/Termux-os
-    git clone https://github.com/lacongai/Termux-os ~/Termux-os 2>/dev/null
+    git clone https://github.com/lacongai/Termux-os ~/Termux-os
     cd $HOME
-    [ -f ~/Termux-os/os.sh ] && bash ~/Termux-os/os.sh
+    [ -f ~/Termux-os/os.sh ] && exec bash ~/Termux-os/os.sh
 }
 
 # ─────────────────────────────────────────────────────────
@@ -285,20 +321,17 @@ while [ \$attempt -le 3 ]; do
         echo -ne "\033[1;96mBạn có muốn tự động cập nhật lại tool và gỡ bỏ khóa không? (y/n): \033[0m"
         read -r choice_update
         if [[ "\$choice_update" =~ ^[Yy]$ ]]; then
-            echo -e "\n\033[1;33m[!] Đang tiến hành cập nhật lại tool từ GitHub...\033[0m"
             rm -rf ~/Termux-os
             cd ~ && git clone https://github.com/lacongai/Termux-os
             sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.bashrc
             [ -f ~/.zshrc ] && sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.zshrc
-            echo -e "\n\033[1;32m[✓] Cập nhật và gỡ khóa thành công! Đang khởi động lại...\033[0m"
+            echo -e "\n\033[1;32m[✓] Cập nhật và gỡ khóa thành công!\033[0m"
             sleep 2
-            cd ~/Termux-os && bash os.sh
+            cd ~/Termux-os && exec bash ~/Termux-os/os.sh
             return
         else
             if [ -f "/storage/emulated/0/Termux-os/key" ]; then
                 echo -e "\n\033[1;32m[!] Mật khẩu của bạn là: \033[1;33m\$(cat /storage/emulated/0/Termux-os/key)\033[0m"
-            else
-                echo -e "\n\033[1;31m[!] Không tìm thấy file chứa key!\033[0m"
             fi
             echo -ne "\n\033[1;93mNhập lại Key: \033[0m"
             read -s pass_input
@@ -314,7 +347,6 @@ while [ \$attempt -le 3 ]; do
     else
         printf '\033[1;31m TỪ CHỐI.\033[0m\n'
         if [ \$attempt -eq 3 ]; then
-            echo -e "\n\033[1;31m[!] Hết lượt thử. Đang khởi động lại...\033[0m"
             exit
         fi
         attempt=\$((attempt + 1))
@@ -470,7 +502,6 @@ _auto_install() {
                 "$cmd" "${args[@]}" 2>/dev/null || true
                 return $?
             fi
-            echo -e "${_AI_R}[Auto]${_AI_RST} ✗ Cài '${pkg_hint}' thất bại."
         fi
     fi
 
@@ -478,7 +509,6 @@ _auto_install() {
     local alt_list
     alt_list=$(pkg search "$cmd" 2>/dev/null | grep -v "^Sorting\|^Full\|^N:\|^\s*$" | awk '{print $1}' | grep -i "$cmd" | head -5)
     if [[ -n "$alt_list" ]]; then
-        echo -e "${_AI_Y}[Auto]${_AI_RST} Gói liên quan:"
         local idx=1
         while IFS= read -r p; do echo -e "  ${_AI_C}[${idx}]${_AI_RST} ${p}"; idx=$((idx+1)); done <<< "$alt_list"
         echo -ne "${_AI_Y}Chọn số (Enter=bỏ qua): ${_AI_RST}"
@@ -501,55 +531,14 @@ _auto_install() {
     return 127
 }
 
-smart_run_cmd() {
-    local input="$*"
-
-    if [[ "$input" == /* || "$input" == "~" || "$input" == "~/"* ]]; then
-        local path="${input%/}"
-        path="${path/#\~/$HOME}"
-        if [ -d "$path" ]; then
-            cd "$path" || true
-        else
-            echo -e "${_SR_ERR}[Lỗi] Không tìm thấy thư mục: ${path}${_SR_RST}"
-        fi
-        return
-    fi
-
-    local first_word="${input%% *}"
-    if ! command -v "$first_word" &>/dev/null; then
-        _auto_install $input
-        return $?
-    fi
-
-    bash -c "$input"
+command_not_found_handler() {
+    _auto_install "$@"
+    return $?
 }
 
-11line() {
-    clear
-    echo -e "${C}+------------------------------------------+"
-    echo -e "|       ${Y} SMART MODE ${C}                    |"
-    echo -e "|  ${W}Dán đường dẫn  -> tự cd                 ${C}|"
-    echo -e "|  ${W}Lệnh chưa cài  -> AI tìm gói để cài     ${C}|"
-    echo -e "|  ${W}Lệnh thường    -> giữ nguyên             ${C}|"
-    echo -e "|  ${R}Gõ 'exit' hoặc 'q' để quay lại menu   ${C}|"
-    echo -e "+------------------------------------------+${RS}"
-    echo ""
-
-    while true; do
-        local cwd; cwd=$(pwd)
-        echo -ne "${C}[smart]${Y} $cwd ${G}> ${RS}"
-        read -r user_input
-
-        [[ -z "$user_input" ]] && continue
-        [[ "$user_input" == "exit" || "$user_input" == "quit" || "$user_input" == "q" ]] && break
-
-        smart_run_cmd "$user_input"
-    done
-
-    cd $HOME
-    bash ~/Termux-os/os.sh
-}
-
+# ─────────────────────────────────────────────────────────
+#  [12] Cài Smart Mode vào shell (vĩnh viễn)
+# ─────────────────────────────────────────────────────────
 12line() {
     local marker="# SMART MODE (by Termux-OS)"
 
@@ -565,6 +554,7 @@ smart_run_cmd() {
 
 unsetopt NOMATCH 2>/dev/null
 unsetopt PROMPT_SP 2>/dev/null
+cd $HOME 2>/dev/null
 
 (( ${+ZSH_HIGHLIGHT_STYLES} )) && ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
 
@@ -602,12 +592,10 @@ _is_whitelisted() {
 
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
-
     if _is_whitelisted "$cmd"; then
         echo "zsh: command not found: $cmd"
         return 127
     fi
-
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
@@ -700,7 +688,6 @@ _auto_install() {
                 "$cmd" "${args[@]}" 2>/dev/null || true
                 return $?
             fi
-            echo -e "${_AI_R}[Auto]${_AI_RST} ✗ Cài '${pkg_hint}' thất bại."
         fi
     fi
 
@@ -708,7 +695,6 @@ _auto_install() {
     local alt_list
     alt_list=$(pkg search "$cmd" 2>/dev/null | grep -v "^Sorting\|^Full\|^N:\|^\s*$" | awk '{print $1}' | grep -i "$cmd" | head -5)
     if [[ -n "$alt_list" ]]; then
-        echo -e "${_AI_Y}[Auto]${_AI_RST} Gói liên quan:"
         local idx=1
         while IFS= read -r p; do echo -e "  ${_AI_C}[${idx}]${_AI_RST} ${p}"; idx=$((idx+1)); done <<< "$alt_list"
         echo -ne "${_AI_Y}Chọn số (Enter=bỏ qua): ${_AI_RST}"
@@ -726,8 +712,6 @@ _auto_install() {
             fi
         fi
     fi
-
-    echo -e "${_AI_R}[Auto]${_AI_RST} Không cài được '${cmd}'."
     return 127
 }
 
@@ -741,8 +725,6 @@ command_not_found_handler() {
 ZSH_SMART_EOF
             echo -e "${G}[✓] Đã cài Smart Mode vào ~/.zshrc${RS}"
         fi
-    else
-        echo -e "${Y}[!] Không tìm thấy ~/.zshrc${RS}"
     fi
 
     if [ -f ~/.bashrc ]; then
@@ -755,6 +737,7 @@ ZSH_SMART_EOF
 # SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
 
+cd $HOME 2>/dev/null
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
@@ -768,12 +751,10 @@ _is_whitelisted() {
 
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
-
     if _is_whitelisted "$cmd"; then
         echo "bash: command not found: $cmd"
         return 127
     fi
-
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
@@ -865,7 +846,6 @@ _auto_install() {
                 "$cmd" "${args[@]}" 2>/dev/null || true
                 return $?
             fi
-            echo -e "${_AI_R}[Auto]${_AI_RST} ✗ Cài '${pkg_hint}' thất bại."
         fi
     fi
 
@@ -873,7 +853,6 @@ _auto_install() {
     local alt_list
     alt_list=$(pkg search "$cmd" 2>/dev/null | grep -v "^Sorting\|^Full\|^N:\|^\s*$" | awk '{print $1}' | grep -i "$cmd" | head -5)
     if [[ -n "$alt_list" ]]; then
-        echo -e "${_AI_Y}[Auto]${_AI_RST} Gói liên quan:"
         local idx=1
         while IFS= read -r p; do echo -e "  ${_AI_C}[${idx}]${_AI_RST} ${p}"; idx=$((idx+1)); done <<< "$alt_list"
         echo -ne "${_AI_Y}Chọn số (Enter=bỏ qua): ${_AI_RST}"
@@ -891,8 +870,6 @@ _auto_install() {
             fi
         fi
     fi
-
-    echo -e "${_AI_R}[Auto]${_AI_RST} Không cài được '${cmd}'."
     return 127
 }
 
@@ -929,7 +906,6 @@ menu() {
     printf "\n%s${C}[${W}08${C}]${B} Thêm Khóa Cyber ${R}(Bảo mật Cao)" "$left_pad"
     printf "\n%s${C}[${W}09${C}]${R} Xóa Khóa" "$left_pad"
     printf "\n%s${C}[${W}10${C}]${W} Cập nhật Script" "$left_pad"
-    printf "\n%s${C}[${W}11${C}]${C} ⚡ Smart Mode ${Y}(Chạy tạm thời)" "$left_pad"
     printf "\n%s${C}[${W}12${C}]${G} ⚡ Cài Smart Mode vào Shell ${Y}(Vĩnh viễn)" "$left_pad"
     printf "\n%s${C}[${W}00${C}]${R} Thoát Terminal\n\n" "$left_pad"
 
@@ -946,7 +922,6 @@ menu() {
         8|08)  8line  ;;
         9|09)  9line  ;;
         10)    10line ;;
-        11)    11line ;;
         12)    12line ;;
         0|00)  cd $HOME; clear; exit 0 ;;
         *)     menu   ;;
