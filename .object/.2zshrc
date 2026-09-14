@@ -1,4 +1,3 @@
-
 ZSH_THEME="henntaiiz"
 export ZSH=$HOME/.oh-my-zsh
 plugins=(git)
@@ -44,9 +43,26 @@ ZSH_HIGHLIGHT_STYLES[comment]='fg=244'
 ZSH_HIGHLIGHT_STYLES[redirection]='fg=cyan'
 ZSH_HIGHLIGHT_STYLES[globbing]='fg=cyan'
 
+# ── PATTERN: file đuôi phổ biến → VÀNG (match mọi vị trí) ─
+ZSH_HIGHLIGHT_PATTERNS+=('*.py'   'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.sh'   'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.js'   'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.ts'   'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.rb'   'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.go'   'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.c'    'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.cpp'  'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.rs'   'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.php'  'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.java' 'fg=yellow,bold')
+ZSH_HIGHLIGHT_PATTERNS+=('*.json' 'fg=yellow')
+ZSH_HIGHLIGHT_PATTERNS+=('*.txt'  'fg=yellow')
+ZSH_HIGHLIGHT_PATTERNS+=('*.md'   'fg=yellow')
+
 # ══════════════════════════════════════════════════════════
-#  PATH PREVIEW: tô vàng cả path có khoảng trắng
-#  (vì zsh-syntax-highlighting tách bằng whitespace)
+#  PATH PREVIEW: tô đồng nhất path thuần có khoảng trắng
+#  CHỈ chạy khi buffer là path thuần (không có cd/python...)
+#  Dùng '=' (GHI ĐÈ) chứ KHÔNG dùng '+=' (cộng dồn)
 # ══════════════════════════════════════════════════════════
 autoload -Uz add-zle-hook-widget 2>/dev/null
 
@@ -55,15 +71,20 @@ _sr_path_preview() {
     local trimmed="${buf#"${buf%%[! ]*}"}"
     trimmed="${trimmed%"${trimmed##*[! ]}"}"
 
+    # CHỈ xử lý khi buffer là path thuần (bắt đầu bằng / hoặc ~)
     if [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
         local path="${trimmed%/}"
         path="${path/#\~/$HOME}"
-        if [[ -d "$path" ]]; then
-            region_highlight+=("0 ${#buf} fg=cyan,bold")
-        elif [[ -f "$path" ]]; then
-            region_highlight+=("0 ${#buf} fg=yellow,bold")
+        # Loại bỏ escape `\ ` để check path tồn tại
+        local path_unescaped="${path//\\ / }"
+        if [[ -d "$path_unescaped" || -d "$path" ]]; then
+            # GHI ĐÈ hoàn toàn — không dùng +=
+            region_highlight=("0 ${#buf} fg=cyan,bold")
+        elif [[ -f "$path_unescaped" || -f "$path" ]]; then
+            region_highlight=("0 ${#buf} fg=yellow,bold")
         fi
     fi
+    # Nếu không phải path thuần → để zsh-syntax-highlighting tự tô
 }
 add-zle-hook-widget line-pre-redraw _sr_path_preview 2>/dev/null
 
@@ -78,8 +99,9 @@ _smart_accept_line() {
     if [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
         local path="${trimmed%/}"
         path="${path/#\~/$HOME}"
-        if [[ -d "$path" ]]; then
-            BUFFER="cd ${(q)path}"
+        local path_unescaped="${path//\\ / }"
+        if [[ -d "$path_unescaped" || -d "$path" ]]; then
+            BUFFER="cd ${(q)path_unescaped}"
             zle .accept-line
             return
         fi
