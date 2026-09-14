@@ -1,6 +1,6 @@
 #!/usr/bin/bash
-git clone https://github.com/zsh-users/zsh-autosuggestions /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions 2>/dev/null
-git clone https://github.com/zsh-users/zsh-syntax-highlighting.git /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting 2>/dev/null
+git clone https://github.com/zsh-users/zsh-autosuggestions /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting
 
 clear
 PUT(){ echo -en "\033[${1};${2}H";}
@@ -18,13 +18,7 @@ cd ~/Termux-os/.object
 echo -e '\e[1;96m'
 read -p '  Nhập Tên Banner ❯ ' name
 sed -e "s/\PROC/$name/g" .2zshrc > $HOME/.zshrc
-
-# ── FIX: tắt dấu % treo cuối banner ───────────────────────
-echo "" >> $HOME/.zshrc
-grep -q "unsetopt PROMPT_SP" $HOME/.zshrc 2>/dev/null || echo 'unsetopt PROMPT_SP' >> $HOME/.zshrc
-echo "" >> $HOME/.zshrc
-
-echo ""
+echo  ""
 echo -e '\e[1;96m'
 read -p '  Nhập Tên Shell ❯ ' name
 sed -e "s/\henntaiiz/$name/g" .henntaiiz.zsh-theme > $HOME/.oh-my-zsh/themes/henntaiiz.zsh-theme
