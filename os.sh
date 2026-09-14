@@ -53,7 +53,31 @@ banner() {
     local FLAG="$HOME/.termux-os-installed"
 
     # ══════════════════════════════════════════════════════════
-    #  LẦN 2+ : đã có flag → cài lại đầy đủ → reload → EXIT
+    #  KILL ALL TERMUX TABS — helper
+    # ══════════════════════════════════════════════════════════
+    _kill_all_tabs() {
+        local my_pid=$$
+        # Kill tất cả shell con (zsh, bash, sh) trừ shell hiện tại
+        for shell in zsh bash sh; do
+            for pid in $(pgrep -f "/$shell" 2>/dev/null); do
+                [ "$pid" != "$my_pid" ] && kill -TERM "$pid" 2>/dev/null || true
+            done
+        done
+        sleep 0.3
+        # Kill lần 2 với SIGKILL cho process cứng đầu
+        for shell in zsh bash sh; do
+            for pid in $(pgrep -f "/$shell" 2>/dev/null); do
+                [ "$pid" != "$my_pid" ] && kill -9 "$pid" 2>/dev/null || true
+            done
+        done
+        # Kill session process của Termux (không phải app chính)
+        for pid in $(pgrep -f "com.termux/files/usr/bin" 2>/dev/null); do
+            [ "$pid" != "$my_pid" ] && kill -9 "$pid" 2>/dev/null || true
+        done
+    }
+
+    # ══════════════════════════════════════════════════════════
+    #  LẦN 2+ : cài lại đầy đủ → kill tabs → EXIT
     # ══════════════════════════════════════════════════════════
     if [ -f "$FLAG" ]; then
         echo -e "\n${Y}[Lần 2+] Đang cài lại các lệnh và làm mới cấu hình...${RS}\n"
@@ -65,8 +89,23 @@ banner() {
         pkg install zsh git figlet toilet ruby wget curl -y
         pkg install eza -y 2>/dev/null || true
 
-        # 3. Cài lolcat đảm bảo
-        gem install lolcat --no-document 2>/dev/null || gem install lolcat 2>/dev/null || true
+        # 3. Cài lolcat đảm bảo (fix lỗi "can't find gem lolcat")
+        echo -e "${C}[*] Cài lolcat...${RS}"
+        if ! command -v lolcat &>/dev/null || ! lolcat --version &>/dev/null 2>&1; then
+            # Xóa bin cũ nếu hỏng
+            rm -f "$PREFIX/bin/lolcat" 2>/dev/null
+            # Cài qua gem
+            gem install lolcat --no-document 2>&1 | tail -2
+            # Nếu vẫn fail → cài ruby trước rồi gem lại
+            if ! command -v lolcat &>/dev/null; then
+                pkg install ruby -y 2>/dev/null || true
+                gem install lolcat --no-document 2>&1 | tail -2
+            fi
+            # Fallback cuối: cài gói lolcat qua pkg (nếu có)
+            if ! command -v lolcat &>/dev/null; then
+                pkg install lolcat -y 2>/dev/null || true
+            fi
+        fi
 
         # 4. Clear + copy figlet font
         clear
@@ -93,16 +132,21 @@ banner() {
         clear
         cd ~/Termux-os
 
-        # 9. Reload settings (đã bỏ termux-open-url h4ck3r.me)
+        # 9. Reload settings
         termux-reload-settings 2>/dev/null || true
 
-        # 10. Thông báo + thoát
-        echo -e "\n${G}[✓] Đã cài lại xong.${RS}"
-        echo -e "${Y}→ Đang đưa Termux về nền...${RS}"
-        sleep 2
-        # Đưa app về nền (giống ấn Home) — không kill app
+        # 10. Kill tất cả các tab Termux
+        echo -e "\n${C}[*] Đang đóng tất cả các tab Termux...${RS}"
+        sleep 1
+        _kill_all_tabs
+
+        # 11. Thông báo + thoát
+        echo -e "\n${G}[✓] Đã cài lại xong. Đang đóng Termux...${RS}"
+        sleep 1
+        # Đưa app về nền phòng trường hợp kill không thành công
         input keyevent KEYCODE_HOME 2>/dev/null || true
         sleep 1
+        clear
         exit 0
     fi
 
@@ -120,8 +164,19 @@ banner() {
     # 3. Cài eza (thay exa)
     pkg install eza -y 2>/dev/null || true
 
-    # 4. Cài lolcat đảm bảo
-    gem install lolcat --no-document 2>/dev/null || gem install lolcat 2>/dev/null || true
+    # 4. Cài lolcat đảm bảo (fix lỗi "can't find gem lolcat")
+    echo -e "${C}[*] Cài lolcat...${RS}"
+    if ! command -v lolcat &>/dev/null || ! lolcat --version &>/dev/null 2>&1; then
+        rm -f "$PREFIX/bin/lolcat" 2>/dev/null
+        gem install lolcat --no-document 2>&1 | tail -2
+        if ! command -v lolcat &>/dev/null; then
+            pkg install ruby -y 2>/dev/null || true
+            gem install lolcat --no-document 2>&1 | tail -2
+        fi
+        if ! command -v lolcat &>/dev/null; then
+            pkg install lolcat -y 2>/dev/null || true
+        fi
+    fi
 
     # 5. Clear + copy figlet font
     clear
@@ -152,14 +207,14 @@ banner() {
     clear
     cd ~/Termux-os
 
-    # 11. Reload settings (đã bỏ termux-open-url h4ck3r.me)
+    # 11. Reload settings
     termux-reload-settings 2>/dev/null || true
 
     # 12. Tạo flag + quay lại menu
     touch "$FLAG"
     echo -e "\n${G}[✓] Đã cài đặt xong!${RS}"
     echo -e "${W}→ Chọn các chức năng bạn muốn ở menu dưới.${RS}"
-    echo -e "${W}→ Sau khi xong, ấn ${Y}1${W} lần nữa để cài lại và thoát Termux.${RS}"
+    echo -e "${W}→ Sau khi xong, ấn ${Y}1${W} lần nữa để cài lại + kill tabs + thoát Termux.${RS}"
     echo ""
     sleep 4
     menu
