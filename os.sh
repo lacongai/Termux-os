@@ -62,13 +62,40 @@ _safe_reload_settings() {
 # ══════════════════════════════════════════════════════════
 #  CÁC HÀM LINE
 # ══════════════════════════════════════════════════════════
-1line() { apt update && apt upgrade; pkg install zsh git figlet toilet ruby wget curl -y; gem install lolcat; clear; cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; pkg install toilet figlet exa -y; cd ~/Termux-os/.object; rm -rf ~/.termux/colors.properties; rm -rf /data/data/com.termux/files/usr/etc/motd; cp -r .colors.properties ~/.termux/colors.properties; cp -r .termux.properties ~/.termux.properties; curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf; clear; cd ~/Termux-os ; bash os.sh; termux-reload-settings 2>/dev/null || true; }
-2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh; }
-3line() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh; }
-4line() { chsh -s bash; cd ~/Termux-os ; bash os.sh; }
-5line() { rm -rf ~/.zshrc; cd ~/Termux-os/.object; bash .2.sh; clear ; cd ~/Termux-os ; bash os.sh; }
-6line() { cd ~/Termux-os/.object; bash .1.sh; clear ; cd ~/Termux-os ; bash os.sh; }
-7line() { cd ~/Termux-os/.object; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear ; cd ~/Termux-os ; bash os.sh; }
+1line() {
+    apt update && apt upgrade -y
+    pkg install zsh git figlet toilet ruby wget curl -y
+    gem install lolcat 2>/dev/null || true
+    clear
+    cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
+    git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh 2>/dev/null || true
+    pkg install toilet figlet exa -y
+    cd ~/Termux-os/.object || return
+    rm -rf ~/.termux/colors.properties
+    rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
+    cp -r .colors.properties ~/.termux/colors.properties 2>/dev/null
+    cp -r .termux.properties ~/.termux.properties 2>/dev/null
+    curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf 2>/dev/null
+    clear
+    cd ~/Termux-os || return
+    _safe_open_url "https://h4ck3r.me"
+    _safe_reload_settings
+    bash os.sh
+}
+
+2line() {
+    rm -rf ~/.zshrc
+    git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh 2>/dev/null || true
+    cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc 2>/dev/null
+    cd ~/Termux-os || return
+    bash os.sh
+}
+
+3line() { pkg install zsh -y; chsh -s zsh; cd ~/Termux-os || return; bash os.sh; }
+4line() { chsh -s bash; cd ~/Termux-os || return; bash os.sh; }
+5line() { rm -rf ~/.zshrc; cd ~/Termux-os/.object || return; bash .2.sh; clear; cd ~/Termux-os || return; bash os.sh; }
+6line() { cd ~/Termux-os/.object || return; bash .1.sh; clear; cd ~/Termux-os || return; bash os.sh; }
+7line() { cd ~/Termux-os/.object || return; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear; cd ~/Termux-os || return; bash os.sh; }
 
 # ══════════════════════════════════════════════════════════
 #  [10] AUTO UPDATE FROM GITHUB
@@ -529,9 +556,39 @@ smart_run_cmd() {
 }
 
 # ══════════════════════════════════════════════════════════
-#  [12] CÀI SMART MODE VÀO SHELL (vĩnh viễn)
+#  [11] SMART MODE — REPL tạm thời
 # ══════════════════════════════════════════════════════════
 11line() {
+    clear
+    echo -e "${C}╔══════════════════════════════════════════╗"
+    echo -e "║       ${Y}⚡  SMART MODE  ⚡${C}               ║"
+    echo -e "║  ${W}Dán đường dẫn  → tự cd                 ${C}║"
+    echo -e "║  ${W}Nhập tên file  → tự chạy đúng lệnh     ${C}║"
+    echo -e "║  ${W}Lệnh chưa cài  → AI tìm gói để cài    ${C}║"
+    echo -e "║  ${W}Lệnh thường    → giữ nguyên             ${C}║"
+    echo -e "║  ${R}Gõ 'exit' hoặc 'q' để quay lại menu   ${C}║"
+    echo -e "╚══════════════════════════════════════════╝${RS}"
+    echo ""
+
+    while true; do
+        local cwd; cwd=$(pwd)
+        echo -ne "${C}[smart]${Y} $cwd ${G}❯ ${RS}"
+        read -r user_input
+
+        [[ -z "$user_input" ]] && continue
+        [[ "$user_input" == "exit" || "$user_input" == "quit" || "$user_input" == "q" ]] && break
+
+        smart_run_cmd "$user_input"
+    done
+
+    cd ~/Termux-os || return
+    bash os.sh
+}
+
+# ══════════════════════════════════════════════════════════
+#  [12] CÀI SMART MODE VÀO SHELL (vĩnh viễn)
+# ══════════════════════════════════════════════════════════
+12line() {
     local marker="# SMART MODE (by Termux-OS)"
 
     # ── Cài vào ~/.zshrc ──
@@ -899,7 +956,8 @@ menu() {
     printf "\n${left_pad}${C}[${W}08${C}]${B} Thêm Khóa Cyber ${R}(Bảo mật Cao)"
     printf "\n${left_pad}${C}[${W}09${C}]${R} Xóa Khóa"
     printf "\n${left_pad}${C}[${W}10${C}]${W} Cập nhật Script"
-    printf "\n${left_pad}${C}[${W}11${C}]${G} ⚡ Cài Smart Mode vào Shell ${Y}(Vĩnh viễn)"
+    printf "\n${left_pad}${C}[${W}11${C}]${C} ⚡ Smart Mode ${Y}(Chạy tạm thời)"
+    printf "\n${left_pad}${C}[${W}12${C}]${G} ⚡ Cài Smart Mode vào Shell ${Y}(Vĩnh viễn)"
     printf "\n${left_pad}${C}[${W}00${C}]${R} Thoát Terminal\n\n"
 
     echo -ne "${left_pad}${C}Lựa chọn: ${RS}"
@@ -916,6 +974,7 @@ menu() {
         9|09)  9line  ;;
         10)    10line ;;
         11)    11line ;;
+        12)    12line ;;
         0|00)  exit   ;;
         *)     menu   ;;
     esac
