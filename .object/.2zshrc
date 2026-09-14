@@ -44,11 +44,7 @@ draw_banner() {
 
     draw_line "╔" "╗"
     print_center ""
-    if command -v lolcat &>/dev/null; then
-        figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" | lolcat
-    else
-        figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC"
-    fi
+    figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" | lolcat
     print_center ""
     print_center "HỆ THỐNG: TRỰC TUYẾN  |  NGƯỜI DÙNG: ROOT"
     print_center "OS : Termux-OS v2"
