@@ -19,10 +19,7 @@ clear
 
 draw_banner() {
     local BOX_WIDTH=56
-    local cyan='\033[1;36m'
-    local yellow='\033[1;33m'
-    local white='\033[1;37m'
-    local red='\033[1;31m'
+    local cyan='\033[0;36m'
     local reset='\033[0m'
 
     print_center() {
@@ -209,6 +206,7 @@ _auto_install() {
     echo -e "${_AI_R}[Auto]${_AI_RST} Không cài được '${cmd}'."
     return 127
 }
+
 
 # ── command_not_found_handler: Smart Run + Auto Install ───
 command_not_found_handler() {
