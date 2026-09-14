@@ -93,7 +93,7 @@ banner
 # ══════════════════════════════════════════════════════════
 #  1line — Cài đặt: lần 1 đầy đủ, lần 2+ chỉ cập nhật
 # ══════════════════════════════════════════════════════════
-1line() { apt update && apt upgrade; termux-setup-storage; pkg install zsh git figlet toilet ruby wget curl -y; pkg update && pkg upgrade -y; pkg install python -y; pkg install nodejs git -y; pkg install git -y; pip install python-telegram-bot requests; pip install telebot rich; pkg install boxes ruby -y; pip install pystyle; pkg install python git curl wget neofetch figlet toilet ruby boxes -y; pip install rich colorama; npm install discord.js; pip install yt_dlp; pkg install python-psutil; pip install flask; pip install telethon; pkg install python git -y; pip install python-telegram-bot==20.3 aiohttp rich pytz; pip install requests beautifulsoup4; pip install pywebview; pip install pyTelegramBotAPI requests; pkg install clang; pip install protobuf-decoder; pip install google-play-scraper; pip install python-cfonts; pip install shortuuid; pip install aiofiles; python -m pip install flask-cors; pip install fastapi uvicorn python-multipart aiofiles; pkg update; pkg install rust clang python; pip install --upgrade pip setuptools wheel; pip install fastapi==0.95.2 pydantic==1.10.24 uvicorn; pip install qrcode; pkg install ffmpeg; pip install protobuf; python -m pip install PyJWT; cd "Termux-os"; clear; pip install python-telegram-bot[job-queue]; pip install --upgrade "python-telegram-bot[job-queue]"; pip install --upgrade pip; pip install pillow; npm install express cors; termux-wake-lock; npm i express cors; npm uninstall express; command -v lolcat &>/dev/null || pip install lolcat 2>/dev/null || true; clear; cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; pkg install toilet figlet exa -y; cd ~/Termux-os/.object; rm -rf ~/.termux/colors.properties; rm -rf /data/data/com.termux/files/usr/etc/motd; cp -r .colors.properties ~/.termux/colors.properties; cp -r .termux.properties ~/.termux/termux.properties; sed -i '/terminal-cursor-style/d' ~/.termux/termux.properties; echo "terminal-cursor-style = underline" >> ~/.termux/termux.properties; termux-reload-settings; curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf; clear; cd ~/Termux-os ; bash os.sh --no-update; termux-reload-settings; }
+1line() { apt update && apt upgrade; termux-setup-storage; pkg install zsh git figlet toilet ruby wget curl -y; pkg update && pkg upgrade -y; pkg install python -y; pkg install nodejs git -y; pkg install git -y; pip install python-telegram-bot requests; pip install telebot rich; pkg install boxes ruby -y; pip install pystyle; pkg install python git curl wget neofetch figlet toilet ruby boxes -y; pip install rich colorama; npm install discord.js; pip install yt_dlp; pkg install python-psutil; pip install flask; pip install telethon; pkg install python git -y; pip install python-telegram-bot==20.3 aiohttp rich pytz; pip install requests beautifulsoup4; pip install pywebview; pip install pyTelegramBotAPI requests; pkg install clang; pip install protobuf-decoder; pip install google-play-scraper; pip install python-cfonts; pip install shortuuid; pip install aiofiles; python -m pip install flask-cors; pip install fastapi uvicorn python-multipart aiofiles; pkg update; pkg install rust clang python; pip install --upgrade pip setuptools wheel; pip install fastapi==0.95.2 pydantic==1.10.24 uvicorn; pip install qrcode; pkg install ffmpeg; pip install protobuf; python -m pip install PyJWT; cd ~/Termux-os; clear; pip install python-telegram-bot[job-queue]; pip install --upgrade "python-telegram-bot[job-queue]"; pip install --upgrade pip; pip install pillow; npm install express cors; termux-wake-lock; npm i express cors; npm uninstall express; command -v lolcat &>/dev/null || pip install lolcat 2>/dev/null || true; clear; cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; pkg install toilet figlet exa -y; cd ~/Termux-os/.object; rm -rf ~/.termux/colors.properties; rm -rf /data/data/com.termux/files/usr/etc/motd; cp -r .colors.properties ~/.termux/colors.properties; cp -r .termux.properties ~/.termux/termux.properties; sed -i '/terminal-cursor-style/d' ~/.termux/termux.properties; echo "terminal-cursor-style = underline" >> ~/.termux/termux.properties; termux-reload-settings; curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf; clear; cd ~/Termux-os ; bash os.sh --no-update; termux-reload-settings; }
 
 2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh; }
 3line() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh; }
@@ -112,7 +112,7 @@ banner
         echo -e "${Y}[!] Không phải Git repository. Cài lại từ đầu...${RS}"
         rm -rf ~/Termux-os
         git clone https://github.com/lacongai/Termux-os ~/Termux-os
-        cd ~/Termux-os && bash os.sh --no-update
+        cd ~/Termux-os && bash os.sh
         return
     fi
 
@@ -193,7 +193,7 @@ while [ \$attempt -le 3 ]; do
             [ -f ~/.zshrc ] && sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.zshrc
             echo -e "\n\033[1;32m[✓] Cập nhật và gỡ khóa thành công! Đang khởi động lại...\033[0m"
             sleep 2
-            cd ~/Termux-os && bash os.sh --no-update
+            cd ~/Termux-os && bash os.sh
             return
         else
             if [ -f "/storage/emulated/0/Termux-os/key" ]; then
@@ -395,6 +395,7 @@ _auto_install() {
 smart_run_cmd() {
     local input="$*"
 
+    # Smart Path
     if [[ "$input" == /* || "$input" == "~" || "$input" == "~/"* ]]; then
         local path="${input%/}"
         path="${path/#\~/$HOME}"
@@ -406,12 +407,36 @@ smart_run_cmd() {
         return
     fi
 
+    # Smart Run: file tồn tại với đuôi hỗ trợ
+    local filename="${input%% *}"
+    local ext="${filename##*.}"
+    if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
+        case "$ext" in
+            py)   python "$filename";       return ;;
+            sh)   bash "$filename";         return ;;
+            js)   node "$filename";         return ;;
+            ts)   npx ts-node "$filename";  return ;;
+            php)  php "$filename";          return ;;
+            rb)   ruby "$filename";         return ;;
+            lua)  lua "$filename";          return ;;
+            pl)   perl "$filename";         return ;;
+            go)   go run "$filename";       return ;;
+            r|R)  Rscript "$filename";      return ;;
+            java) local cls="${filename%.java}"; javac "$filename" && java "$cls"; return ;;
+            c)    local out="${filename%.c}"; gcc "$filename" -o "$out" && "./$out"; return ;;
+            cpp)  local out="${filename%.cpp}"; g++ "$filename" -o "$out" && "./$out"; return ;;
+            rs)   local out="${filename%.rs}"; rustc "$filename" && "./$out"; return ;;
+        esac
+    fi
+
+    # Kiểm tra lệnh đã cài chưa
     local first_word="${input%% *}"
     if ! command -v "$first_word" &>/dev/null; then
         _auto_install $input
         return $?
     fi
 
+    # Lệnh thông thường — giữ nguyên
     bash -c "$input"
 }
 
@@ -440,7 +465,7 @@ smart_run_cmd() {
         smart_run_cmd "$user_input"
     done
 
-    cd ~/Termux-os ; bash os.sh --no-update
+    cd ~/Termux-os ; bash os.sh
 }
 
 # ─────────────────────────────────────────────────────────
