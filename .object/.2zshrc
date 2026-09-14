@@ -1,4 +1,4 @@
-
+cat << 'EOF' > ~/.zshrc
 ZSH_THEME="henntaiiz"
 export ZSH=$HOME/.oh-my-zsh
 plugins=(git)
@@ -7,7 +7,7 @@ source $HOME/.oh-my-zsh/oh-my-zsh.sh
 [[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 [[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
-# app.py, run.sh, index.js ... hiện màu vàng trên prompt (unknown-token)
+typeset -Ag ZSH_HIGHLIGHT_STYLES
 ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
 
 clear
@@ -20,7 +20,6 @@ done
 echo -e "\033[0m"
 sleep 0.4
 clear
-
 
 draw_banner() {
     local BOX_WIDTH=56
@@ -55,18 +54,12 @@ draw_banner() {
 
 draw_banner
 
-# ══════════════════════════════════════════════════════════
-#  SMART MODE (by Termux-OS)
-#  Smart Path : dán đường dẫn (có/không có khoảng cách) → tự cd
-#  Smart Run  : nhập tên file.đuôi → tự chạy đúng lệnh
-#  Auto Install: lệnh chưa cài → tự hỏi cài qua pkg
-#  Lệnh thường: giữ nguyên hoàn toàn
-# ══════════════════════════════════════════════════════════
-
+_SR_LABEL='\033[1;96m'
+_SR_FILE='\033[1;93m'
+_SR_CMD='\033[1;36m'
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
-# ── ZLE accept-line: bắt raw buffer TRƯỚC khi zsh word-split ──
 _smart_accept_line() {
     local buf="$BUFFER"
     local trimmed="${buf#"${buf%%[! ]*}"}"
@@ -90,7 +83,6 @@ _smart_accept_line() {
 }
 zle -N accept-line _smart_accept_line
 
-# ── Auto Install ──────────────────────────────────────────
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
     local GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
@@ -100,7 +92,6 @@ _auto_install() {
     setopt LOCAL_OPTIONS; unsetopt NOTIFY
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
-    # ── Bước 1: pkg install trực tiếp ────────────────────────
     echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Đang thử cài..."
     local log_file="/tmp/_ai_$.log" code_file="/tmp/_ai_exit_$.code"
     ( pkg install -y "$cmd" &>"$log_file"; echo $? > "$code_file" ) &
@@ -117,7 +108,6 @@ _auto_install() {
         "$cmd" "${args[@]}"; return $?
     fi
 
-    # ── Bước 2: Gemini AI (ưu tiên trước pkg search) ─────────
     echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang hỏi Gemini AI..."
     local ai_pkg=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
@@ -152,15 +142,9 @@ _auto_install() {
                 echo -e "${_AI_G}[Auto Install AI]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${ai_pkg}${_AI_RST}'"
                 "$cmd" "${args[@]}"; return $?
             fi
-            echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ Không thể cài '${ai_pkg}'. Chuyển sang tìm gói..."
-        else
-            echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ Không lấy được gợi ý từ AI. Chuyển sang tìm gói..."
         fi
-    else
-        echo -e "${_AI_Y}[Auto Install AI]${_AI_RST} ⚠ Chưa cấu hình GEMINI_API_KEY — bỏ qua AI."
     fi
 
-    # ── Bước 3: pkg search ────────────────────────────────────
     echo ""
     echo -e "${_AI_Y}[Auto Install]${_AI_RST} Đang tìm gói trong kho Termux..."
     local alt_list
@@ -189,52 +173,54 @@ _auto_install() {
                     echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${selected}${_AI_RST}'"
                     "$cmd" "${args[@]}"; return $?
                 fi
-                echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Vẫn không thể chạy '${cmd}' sau khi cài '${selected}'"
             fi
         fi
-    else
-        echo -e "${_AI_R}[Auto Install]${_AI_RST} Không tìm thấy gói nào phù hợp cho '${_AI_W}${cmd}${_AI_RST}'"
     fi
     return 127
 }
 
-# ── command_not_found_handler: Smart Run + Auto Install ───
 command_not_found_handler() {
     local filename="$1"
     local ext="${filename##*.}"
 
-    # Smart Run: file tồn tại với đuôi được hỗ trợ
     if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
+        local cmd="" display_cmd=""
         case "$ext" in
-            py)   python "$filename";       return $? ;;
-            sh)   bash "$filename";         return $? ;;
-            js)   node "$filename";         return $? ;;
-            ts)   npx ts-node "$filename";  return $? ;;
-            php)  php "$filename";          return $? ;;
-            rb)   ruby "$filename";         return $? ;;
-            lua)  lua "$filename";          return $? ;;
-            pl)   perl "$filename";         return $? ;;
-            go)   go run "$filename";       return $? ;;
-            r|R)  Rscript "$filename";      return $? ;;
+            py)   cmd="python";        display_cmd="python $filename" ;;
+            sh)   cmd="bash";          display_cmd="bash $filename" ;;
+            js)   cmd="node";          display_cmd="node $filename" ;;
+            ts)   cmd="npx ts-node";   display_cmd="npx ts-node $filename" ;;
+            php)  cmd="php";           display_cmd="php $filename" ;;
+            rb)   cmd="ruby";          display_cmd="ruby $filename" ;;
+            lua)  cmd="lua";           display_cmd="lua $filename" ;;
+            pl)   cmd="perl";          display_cmd="perl $filename" ;;
+            go)   cmd="go run";        display_cmd="go run $filename" ;;
+            r|R)  cmd="Rscript";       display_cmd="Rscript $filename" ;;
             java)
                 local cls="${filename%.java}"
+                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}javac ${filename} && java ${cls}${_SR_RST}"
                 javac "$filename" && java "$cls"; return $? ;;
             c)
                 local out="${filename%.c}"
+                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}gcc ${filename} -o ${out} && ./${out}${_SR_RST}"
                 gcc "$filename" -o "$out" && "./$out"; return $? ;;
             cpp)
                 local out="${filename%.cpp}"
+                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}g++ ${filename} -o ${out} && ./${out}${_SR_RST}"
                 g++ "$filename" -o "$out" && "./$out"; return $? ;;
             rs)
                 local out="${filename%.rs}"
+                echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}rustc ${filename} && ./${out}${_SR_RST}"
                 rustc "$filename" && "./$out"; return $? ;;
+            *)
+                _auto_install "$@"; return $? ;;
         esac
+        echo -e "${_SR_LABEL}[Smart Run]${_SR_RST} ${_SR_FILE}${filename}${_SR_RST} → ${_SR_CMD}${display_cmd}${_SR_RST}"
+        $cmd "$filename"; return $?
     fi
 
-    # Auto Install: thử cài lệnh chưa có
     _auto_install "$@"
     return $?
 }
-# ══════════════════════════════════════════════════════════
-#  END SMART MODE
-# ══════════════════════════════════════════════════════════
+EOF
+exec zsh
