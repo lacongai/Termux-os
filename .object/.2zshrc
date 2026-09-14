@@ -5,34 +5,10 @@ plugins=(git)
 source $HOME/.oh-my-zsh/oh-my-zsh.sh
 [[ -f ~/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && \
     source ~/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-[[ -f ~/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && \
-    source ~/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
-# ══════════════════════════════════════════════════════════
-#  MÀU ZSH — giống .1zshrc
-# ══════════════════════════════════════════════════════════
-(( ${+ZSH_HIGHLIGHT_STYLES} )) && {
-    ZSH_HIGHLIGHT_STYLES[command]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[builtin]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[alias]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[function]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[precommand]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[hashed-command]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[reserved-word]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[single-hyphen-option]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[double-hyphen-option]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[arg0]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[path]='fg=yellow,bold'
-    ZSH_HIGHLIGHT_STYLES[globbing]='fg=yellow,bold'
-    ZSH_HIGHLIGHT_STYLES[path_prefix]='fg=yellow,bold'
-    ZSH_HIGHLIGHT_STYLES[path_approx]='fg=yellow,bold'
-    ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
-    ZSH_HIGHLIGHT_STYLES[command-not-found]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[default]='fg=green,bold'
-    ZSH_HIGHLIGHT_STYLES[commandseparator]='fg=green,bold'
-}
+# KHÔNG source zsh-syntax-highlighting
 
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
+# ... (copy toàn bộ phần còn lại từ .1zshrc)
 
 unsetopt NOMATCH 2>/dev/null
 unsetopt PROMPT_SP 2>/dev/null
@@ -42,14 +18,14 @@ cd $HOME 2>/dev/null
 clear
 echo -e "\033[1;32m[*] ĐANG KHỞI ĐỘNG TERMUX-OS v2..."
 echo -ne "\033[1;36m[ĐANG TẢI CÁC MÔ-ĐUN] \033[1;32m"
-for i in {1..25}; do
-    echo -ne "█"
-    sleep 0.02
-done
+for i in {1..25}; do echo -ne "█"; sleep 0.02; done
 echo -e "\033[0m"
 sleep 0.4
 clear
 
+# ══════════════════════════════════════════════════════════
+#  BANNER 7 MÀU
+# ══════════════════════════════════════════════════════════
 draw_banner() {
     local BOX_WIDTH=56
     local cyan='\033[1;36m'
@@ -80,8 +56,6 @@ draw_banner() {
         toilet -f ASCII-Shadow -w $BOX_WIDTH --gay "\PROC" 2>/dev/null || \
             toilet -w $BOX_WIDTH --gay "\PROC" 2>/dev/null || \
             figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" 2>/dev/null
-    elif command -v lolcat &>/dev/null && echo "x" | lolcat &>/dev/null 2>&1; then
-        figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" 2>/dev/null | lolcat -f
     else
         figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" 2>/dev/null || \
             figlet -c "\PROC" 2>/dev/null || echo "  TERMUX  "
@@ -103,25 +77,46 @@ draw_banner() {
 draw_banner
 
 # ══════════════════════════════════════════════════════════
+#  ZLE HOOK: TÔ MÀU BUFFER
+#  - Buffer bắt đầu bằng / hoặc ~ → VÀNG
+#  - Còn lại → XANH LÁ
+# ══════════════════════════════════════════════════════════
+_zle_color_buffer() {
+    region_highlight=()
+    local buf="$BUFFER"
+    local len=${#buf}
+    [ "$len" -eq 0 ] && return
+
+    if [[ "$buf" == /* || "$buf" == '~'* ]]; then
+        region_highlight+=("0 $len fg=yellow,bold")
+    else
+        region_highlight+=("0 $len fg=green,bold")
+    fi
+}
+autoload -Uz add-zle-hook-widget 2>/dev/null
+add-zle-hook-widget line-pre-redraw _zle_color_buffer 2>/dev/null
+
+# ══════════════════════════════════════════════════════════
 #  SMART MODE
 # ══════════════════════════════════════════════════════════
-_SR_LABEL='\033[1;96m'
-_SR_FILE='\033[1;93m'
-_SR_CMD='\033[1;36m'
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
-# ── ZLE accept-line ────────────────────────────────────────
+# ── ZLE hook: tự cd khi buffer là path ───────────────────
 _smart_accept_line() {
     local buf="$BUFFER"
     local trimmed="${buf#"${buf%%[! ]*}"}"
     trimmed="${trimmed%"${trimmed##*[! ]}"}"
 
-    # Chỉ xử lý nếu: buffer là 1 word đơn VÀ bắt đầu bằng / hoặc ~
-    if [[ "$trimmed" != *' '* ]] && \
-       [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
+    # Xử lý CẢ path có space: nếu trim bắt đầu bằng / hoặc ~
+    # và KHÔNG chứa command khác (không bắt đầu bằng chữ thường + space)
+    if [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
         local path="${trimmed%/}"
+        # Unescape: \  → space, \' → '
+        path="${path//\\ / }"
+        path="${path//\\\'/\'}"
         path="${path/#\~/$HOME}"
+
         if [[ -d "$path" ]]; then
             builtin cd "$path"
             BUFFER=""
@@ -138,10 +133,10 @@ _smart_accept_line() {
 }
 zle -N accept-line _smart_accept_line
 
-# ── Auto Install ──────────────────────────────────────────
+# ── Auto Install ─────────────────────────────────────────
 _is_whitelisted() {
     case "$1" in
-        lolcat|figlet|toilet|ls|ll|la|cd|pwd|clear|echo|cat|source|exit|kill|sleep|man|help|history|which|whereis|type|alias|unalias|export|unset|set|read|printf|test|true|false|python|python3|pip|pip3|node|npm|git|vim|nano|apt|pkg|bash|sh|zsh)
+        lolcat|figlet|toilet|ls|ll|la|cd|pwd|clear|echo|cat|source|exit|kill|sleep|man|help|history|which|whereis|type|alias|unalias|export|unset|set|read|printf|test|true|false|python|python3|pip|pip3|node|npm|git|vim|nano|apt|pkg|bash|sh|zsh|cp|mv|rm|mkdir|touch|find|grep|sed|awk|head|tail|wc|sort|uniq|chmod|chown)
             return 0 ;;
         *) return 1 ;;
     esac
@@ -149,7 +144,6 @@ _is_whitelisted() {
 
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
-
     if _is_whitelisted "$cmd"; then
         echo "zsh: command not found: $cmd"
         return 127
@@ -266,12 +260,10 @@ _auto_install() {
     return 127
 }
 
-# ── command_not_found_handler ─────────────────────────────
 command_not_found_handler() {
     local filename="$1"
     local ext="${filename##*.}"
 
-    # Nếu là file tồn tại → tự chạy
     if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
         case "$ext" in
             py)   python "$filename";       return $? ;;
@@ -299,7 +291,6 @@ command_not_found_handler() {
         esac
     fi
 
-    # Command không tồn tại → auto install
     _auto_install "$@"
     return $?
 }
