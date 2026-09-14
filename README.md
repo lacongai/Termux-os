@@ -1,8 +1,8 @@
 # Termux Mods V2 - Hướng Dẫn Cài Đặt và Sử Dụng
 
 > **Phiên bản:** V2 CN  
-> **Cập nhật:** 05/07/2026 lúc 21:58  
-> **Phát hành công khai:** 23:15 cùng ngày
+> **Cập nhật:** 14/08/2026 lúc 17:14 
+> **Phát hành công khai:** 17:15 cùng ngày
 
 ---
 
@@ -99,13 +99,7 @@ Auto Install — lệnh chưa có → tự cài
 hỗ trợ Ai để cài đặt chính xác hơn.        
 ```
 
-```bash
- 📌 Cơ Chế Hoạt Động
 
-✅ (_smart_accept_line)
-✅ (command_not_found_handler)
-✅ (_auto_install)
-```
 
 ---
 
