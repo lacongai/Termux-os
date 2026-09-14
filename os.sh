@@ -26,9 +26,6 @@ print_center() {
     printf "${C}${left_pad}║%*s${color}%s${C}%*s║${RS}\n" $space_len "" "$text" $(( BOX_WIDTH - 2 - len - space_len )) ""
 }
 
-# ══════════════════════════════════════════════════════════
-#  BANNER — echo -e để \033 được dịch
-# ══════════════════════════════════════════════════════════
 banner() {
     clear
     echo -e "\033[1;36m ______                              \033[1;31m  ___  ____"
@@ -48,197 +45,86 @@ banner() {
 }
 
 # ══════════════════════════════════════════════════════════
-#  AUTO UPDATE CHECK
-# ══════════════════════════════════════════════════════════
-_auto_update_check() {
-    [ "${1:-}" = "--no-update" ] && return 0
-    [ ! -d ~/Termux-os/.git ] && return 0
-    command -v git &>/dev/null || return 0
-
-    cd ~/Termux-os 2>/dev/null || return 0
-    git fetch origin &>/dev/null || return 0
-
-    local branch local_c remote_c
-    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-    [ -z "$branch" ] && return 0
-    local_c=$(git rev-parse HEAD 2>/dev/null)
-    remote_c=$(git rev-parse "origin/$branch" 2>/dev/null)
-
-    if [ -n "$local_c" ] && [ -n "$remote_c" ] && [ "$local_c" != "$remote_c" ]; then
-        echo -e "\n${Y}[!] Có bản cập nhật mới trên GitHub!${RS}"
-        echo -ne "${C}Cập nhật ngay bây giờ? (y/n, Enter=y): ${RS}"
-        read -r _ans
-        if [ -z "$_ans" ] || [[ "$_ans" =~ ^[Yy]$ ]]; then
-            if git pull origin "$branch" &>/dev/null; then
-                echo -e "${G}[✓] Đã cập nhật! Đang khởi động lại...${RS}"
-                sleep 1
-                exec bash ~/Termux-os/os.sh --no-update
-            else
-                echo -e "${R}[✗] Pull lỗi, đang ép đồng bộ...${RS}"
-                git reset --hard "origin/$branch" &>/dev/null
-                git pull origin "$branch" &>/dev/null
-                echo -e "${G}[✓] Đã ép cập nhật thành công!${RS}"
-                sleep 1
-                exec bash ~/Termux-os/os.sh --no-update
-            fi
-        fi
-    fi
-}
-
-_auto_update_check "${1:-}"
-
-banner
-
-# ══════════════════════════════════════════════════════════
-#  1line — Cài đặt: lần 1 đầy đủ, lần 2+ chỉ cập nhật
+#  1line — GIỐNG BẢN GỐC + 2 GIAI ĐOẠN
+#  Lần 1: cài đầy đủ → tạo flag → quay lại menu chọn chức năng
+#  Lần 2+: cài lại lệnh → reload settings → thoát app
 # ══════════════════════════════════════════════════════════
 1line() {
     local FLAG="$HOME/.termux-os-installed"
-    local FIRST_TIME=1
-    [ -f "$FLAG" ] && FIRST_TIME=0
 
-    if [ "$FIRST_TIME" = "1" ]; then
-        echo -e "\n${C}[Lần đầu] Đang cài đặt đầy đủ...${RS}\n"
-    else
-        echo -e "\n${Y}[Lần 2+] Chỉ cập nhật, không cài lại.${RS}\n"
-    fi
-
-    echo -e "${C}[1/5] Cập nhật apt...${RS}"
-    apt update -y && apt upgrade -y
-
-    # ── FIX: exa → eza (Termux đã bỏ exa) ─────────────────────
-    echo -e "${C}[2/5] Cài gói cần thiết...${RS}"
-    pkg install -y zsh git figlet toilet ruby wget curl eza 2>/dev/null || \
-        pkg install -y zsh git figlet toilet ruby wget curl 2>/dev/null || true
-
-    # ── FIX: lolcat cài lại nếu lỗi ──────────────────────────
-    if ! command -v lolcat &>/dev/null; then
-        echo -e "${C}[*] Cài lolcat...${RS}"
-        gem install lolcat --no-document 2>&1 | tail -3 || true
-        command -v lolcat &>/dev/null || gem install lolcat 2>&1 | tail -3 || true
-    fi
-
-    if [ "$FIRST_TIME" = "1" ]; then
-        echo -e "${C}[3/5] Cài Oh-My-Zsh...${RS}"
-        [ ! -d "$HOME/.oh-my-zsh" ] && \
-            git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
-    else
-        echo -e "${C}[3/5] Bỏ qua Oh-My-Zsh (đã có).${RS}"
-    fi
-
-    if [ -d "$HOME/Termux-os/.object" ]; then
-        cd "$HOME/Termux-os/.object" || true
-
-        if [ -f 'ANSI Shadow.flf' ] && [ -d "$PREFIX/share/figlet" ]; then
-            [ ! -f "$PREFIX/share/figlet/ASCII-Shadow.flf" ] && \
-                cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf"
-        fi
-
-        echo -e "${C}[4/5] Cập nhật giao diện Termux...${RS}"
+    # ── LẦN 2+ : đã có flag → cài lại → reload → EXIT ────────
+    if [ -f "$FLAG" ]; then
+        echo -e "\n${Y}[Lần 2+] Đang cài lại các lệnh và làm mới cấu hình...${RS}\n"
+        apt update && apt upgrade -y
+        pkg install zsh git figlet toilet ruby wget curl eza -y 2>/dev/null || \
+            pkg install zsh git figlet toilet ruby wget curl -y
+        gem install lolcat --no-document 2>/dev/null || gem install lolcat 2>/dev/null
+        clear
+        cd ~/Termux-os/.object 2>/dev/null || cd ~/Termux-os
+        [ -f 'ANSI Shadow.flf' ] && [ -d "$PREFIX/share/figlet" ] && \
+            cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
         rm -rf ~/.termux/colors.properties
         rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
-
         mkdir -p ~/.termux
         [ -f .colors.properties ] && cp -r .colors.properties ~/.termux/colors.properties
         [ -f .termux.properties ] && cp -r .termux.properties ~/.termux.properties
-
-        if [ ! -f ~/.termux/font.ttf ] || [ "$(stat -c %s ~/.termux/font.ttf 2>/dev/null || echo 0)" -lt 102400 ]; then
-            echo -e "${C}[*] Đang tải font FiraCode Nerd Font...${RS}"
-            curl -L --max-time 60 \
-                https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
-                -o ~/.termux/font.ttf 2>/dev/null || true
-        fi
-    fi
-
-    if [ "$FIRST_TIME" = "1" ]; then
-        echo -e "${C}[5/5] Hoàn tất! Mở liên kết và reload Termux...${RS}"
-        # ── FIX: termux-open-url + am start fallback ─────────────
-        termux-open-url "https://h4ck3r.me" 2>/dev/null || \
-        am start -a android.intent.action.VIEW -d "https://h4ck3r.me" 2>/dev/null || true
         termux-reload-settings 2>/dev/null || true
-        touch "$FLAG"
-        echo -e "${G}[✓] Cài đặt xong. Hãy mở lại Termux để áp dụng.${RS}"
-        sleep 3
+        echo -e "\n${G}[✓] Đã cài lại xong. Thoát Termux...${RS}"
+        sleep 2
+        clear
         exit 0
-    else
-        echo -e "${G}[✓] Đã cập nhật xong (không cần khởi động lại).${RS}"
-        sleep 2
-        cd ~/Termux-os
-        bash os.sh --no-update
     fi
-}
 
-2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh --no-update; }
-3line() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh --no-update; }
-4line() { chsh -s bash; cd ~/Termux-os ; bash os.sh --no-update; }
+    # ── LẦN 1 : cài đầy đủ (giống bản gốc) → tạo flag → menu ─
+    echo -e "\n${C}[Lần đầu] Đang cài đặt đầy đủ...${RS}\n"
 
-5line() {
-    rm -rf ~/.zshrc
-    cd ~/Termux-os/.object
-    bash .2.sh
-    grep -q "unsetopt PROMPT_SP" ~/.zshrc 2>/dev/null || echo 'unsetopt PROMPT_SP' >> ~/.zshrc
-    echo "" >> ~/.zshrc
+    apt update && apt upgrade -y
+    pkg install zsh git figlet toilet ruby wget curl -y
+    # FIX: exa → eza (Termux đã bỏ exa)
+    pkg install eza -y 2>/dev/null || pkg install exa -y 2>/dev/null || true
+
+    # FIX: cài lolcat đảm bảo
+    gem install lolcat --no-document 2>/dev/null || gem install lolcat 2>/dev/null || true
+
     clear
-    cd ~/Termux-os
-    bash os.sh --no-update
-}
+    cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf 2>/dev/null
+    [ ! -d ~/.oh-my-zsh ] && \
+        git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
 
-6line() { cd ~/Termux-os/.object; bash .1.sh; clear ; cd ~/Termux-os ; bash os.sh --no-update; }
+    cd ~/Termux-os/.object 2>/dev/null
+    rm -rf ~/.termux/colors.properties
+    rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
+    mkdir -p ~/.termux
+    [ -f .colors.properties ] && cp -r .colors.properties ~/.termux/colors.properties
+    [ -f .termux.properties ] && cp -r .termux.properties ~/.termux.properties
+    curl -L --max-time 60 \
+        https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
+        > ~/.termux/font.ttf 2>/dev/null || true
 
-7line() {
-    cd ~/Termux-os/.object
-    rm -rf ~/.zshrc
-    chsh -s zsh
-    bash .3.sh
-    grep -q "unsetopt PROMPT_SP" ~/.zshrc 2>/dev/null || echo 'unsetopt PROMPT_SP' >> ~/.zshrc
-    echo "" >> ~/.zshrc
     clear
+    # FIX: scheme https:// + am start fallback, không dùng && treo
+    termux-open-url "https://h4ck3r.me" 2>/dev/null || \
+        am start -a android.intent.action.VIEW -d "https://h4ck3r.me" 2>/dev/null || true
+    termux-reload-settings 2>/dev/null || true
+
+    touch "$FLAG"
+    echo -e "\n${G}[✓] Đã cài đặt xong!${RS}"
+    echo -e "${W}→ Chọn các chức năng bạn muốn ở menu dưới.${RS}"
+    echo -e "${W}→ Sau khi xong, ấn ${Y}1${W} lần nữa để cài lại và thoát Termux.${RS}"
+    echo ""
+    sleep 4
     cd ~/Termux-os
-    bash os.sh --no-update
+    menu
 }
 
-# ─────────────────────────────────────────────────────────
-#  [10] Cập nhật thủ công
-# ─────────────────────────────────────────────────────────
-10line() {
-    echo -e "\n${C}Đang kiểm tra cập nhật từ GitHub...${RS}"
-
-    if [ ! -d ~/Termux-os/.git ]; then
-        echo -e "${Y}[!] Không phải Git repository. Cài lại từ đầu...${RS}"
-        rm -rf ~/Termux-os
-        git clone https://github.com/lacongai/Termux-os ~/Termux-os
-        cd ~/Termux-os && bash os.sh --no-update
-        return
-    fi
-
-    cd ~/Termux-os || exit
-    git fetch origin &>/dev/null
-
-    local current_branch local_commit remote_commit
-    current_branch=$(git rev-parse --abbrev-ref HEAD)
-    local_commit=$(git rev-parse HEAD)
-    remote_commit=$(git rev-parse "origin/$current_branch")
-
-    if [ "$local_commit" = "$remote_commit" ]; then
-        echo -e "${G}[✓] Tool đang là phiên bản mới nhất!${RS}"
-        sleep 2
-        menu
-    else
-        echo -e "${Y}[!] Phát hiện phiên bản mới! Đang cập nhật...${RS}"
-        if git pull origin "$current_branch"; then
-            echo -e "${G}[✓] Cập nhật thành công! Đang khởi động lại...${RS}"
-            sleep 2
-            bash os.sh --no-update
-        else
-            echo -e "${R}[✗] Cập nhật thất bại! Ép đồng bộ...${RS}"
-            git reset --hard "origin/$current_branch"
-            git pull origin "$current_branch"
-            echo -e "${G}[✓] Đã ép cập nhật thành công!${RS}"
-            sleep 2
-            bash os.sh --no-update
-        fi
-    fi
-}
+# ── Các hàm chức năng (giống bản gốc) ────────────────────────
+2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh; }
+3line() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh; }
+4line() { chsh -s bash; cd ~/Termux-os ; bash os.sh; }
+5line() { rm -rf ~/.zshrc; cd ~/Termux-os/.object; bash .2.sh; clear ; cd ~/Termux-os ; bash os.sh; }
+6line() { cd ~/Termux-os/.object; bash .1.sh; clear ; cd ~/Termux-os ; bash os.sh; }
+7line() { cd ~/Termux-os/.object; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear ; cd ~/Termux-os ; bash os.sh; }
+10line() { rm -rf ~/Termux-os; cd; git clone https://github.com/lacongai/Termux-os; cd ~/Termux-os ; bash os.sh; }
 
 # ─────────────────────────────────────────────────────────
 #  CYBER LOCK
@@ -288,7 +174,7 @@ while [ \$attempt -le 3 ]; do
             [ -f ~/.zshrc ] && sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.zshrc
             echo -e "\n\033[1;32m[✓] Cập nhật và gỡ khóa thành công! Đang khởi động lại...\033[0m"
             sleep 2
-            cd ~/Termux-os && bash os.sh --no-update
+            cd ~/Termux-os && bash os.sh
             return
         else
             if [ -f "/storage/emulated/0/Termux-os/key" ]; then
@@ -349,7 +235,7 @@ LOCKEOF
 }
 
 # ─────────────────────────────────────────────────────────
-#  SMART MODE — chỉ tìm gói, KHÔNG tìm file
+#  SMART MODE — tạm thời (11) + vĩnh viễn (12)
 # ─────────────────────────────────────────────────────────
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
@@ -424,8 +310,6 @@ _auto_install() {
         if [[ ! "$pkg_hint" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.+-]*$ ]]; then
             pkg_hint=""
         fi
-    else
-        echo -e "${_AI_Y}[AI]${_AI_RST} ⚠ Chưa cấu hình GEMINI_API_KEY — bỏ qua AI."
     fi
 
     if [[ -n "$pkg_hint" ]]; then
@@ -456,8 +340,6 @@ _auto_install() {
             fi
             echo -e "${_AI_R}[Auto]${_AI_RST} ✗ Cài '${pkg_hint}' thất bại."
         fi
-    else
-        echo -e "${_AI_R}[AI]${_AI_RST} AI không trả về tên gói hợp lệ."
     fi
 
     echo -e "${_AI_Y}[Auto]${_AI_RST} Tìm trong kho Termux..."
@@ -510,9 +392,6 @@ smart_run_cmd() {
     bash -c "$input"
 }
 
-# ─────────────────────────────────────────────────────────
-#  [11] Smart Mode — REPL
-# ─────────────────────────────────────────────────────────
 11line() {
     clear
     echo -e "${C}+------------------------------------------+"
@@ -535,12 +414,9 @@ smart_run_cmd() {
         smart_run_cmd "$user_input"
     done
 
-    cd ~/Termux-os ; bash os.sh --no-update
+    cd ~/Termux-os ; bash os.sh
 }
 
-# ─────────────────────────────────────────────────────────
-#  [12] Cài Smart Mode vĩnh viễn
-# ─────────────────────────────────────────────────────────
 12line() {
     local marker="# SMART MODE (by Termux-OS)"
 
@@ -912,7 +788,7 @@ menu() {
         10)    10line ;;
         11)    11line ;;
         12)    12line ;;
-        0|00)  exit 0 ;;
+        0|00)  clear; exit 0 ;;
         *)     menu   ;;
     esac
 }
