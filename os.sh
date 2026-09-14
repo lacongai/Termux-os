@@ -26,12 +26,8 @@ print_center() {
     printf "${C}${left_pad}║%*s${color}%s${C}%*s║${RS}\n" $space_len "" "$text" $(( BOX_WIDTH - 2 - len - space_len )) ""
 }
 
-# ══════════════════════════════════════════════════════════
-#  BANNER — echo -e để \033 được dịch, không dùng khung wide
-# ══════════════════════════════════════════════════════════
 banner() {
     clear
-
     echo -e "\033[1;36m ______                              \033[1;31m  ___  ____"
     echo -e "\033[1;36m/_  __/__  _________ ___  __  ___  __\033[1;31m / _ \/ __/"
     echo -e "\033[1;36m / / / _ \/ ___/ __ '__ \/ / / / |/_/\033[1;31m/ // /\ \  "
@@ -75,7 +71,6 @@ _auto_update_check() {
                 sleep 1
                 exec bash ~/Termux-os/os.sh --no-update
             else
-                echo -e "${R}[✗] Pull lỗi, đang ép đồng bộ...${RS}"
                 git reset --hard "origin/$branch" &>/dev/null
                 git pull origin "$branch" &>/dev/null
                 echo -e "${G}[✓] Đã ép cập nhật thành công!${RS}"
@@ -91,16 +86,134 @@ _auto_update_check "${1:-}"
 banner
 
 # ══════════════════════════════════════════════════════════
-#  1line — Cài đặt: lần 1 đầy đủ, lần 2+ chỉ cập nhật
+#  1line — Cài đặt đầy đủ
 # ══════════════════════════════════════════════════════════
-1line() { apt update && apt upgrade; termux-setup-storage; pkg install zsh git figlet toilet ruby wget curl -y; pkg update && pkg upgrade -y; pkg install python -y; pkg install nodejs git -y; pkg install git -y; pip install python-telegram-bot requests; pip install telebot rich; pkg install boxes ruby -y; pip install pystyle; pkg install python git curl wget neofetch figlet toilet ruby boxes -y; pip install rich colorama; npm install discord.js; pip install yt_dlp; pkg install python-psutil; pip install flask; pip install telethon; pkg install python git -y; pip install python-telegram-bot==20.3 aiohttp rich pytz; pip install requests beautifulsoup4; pip install pywebview; pip install pyTelegramBotAPI requests; pkg install clang; pip install protobuf-decoder; pip install google-play-scraper; pip install python-cfonts; pip install shortuuid; pip install aiofiles; python -m pip install flask-cors; pip install fastapi uvicorn python-multipart aiofiles; pkg update; pkg install rust clang python; pip install --upgrade pip setuptools wheel; pip install fastapi==0.95.2 pydantic==1.10.24 uvicorn; pip install qrcode; pkg install ffmpeg; pip install protobuf; python -m pip install PyJWT; cd ~/Termux-os; clear; pip install python-telegram-bot[job-queue]; pip install --upgrade "python-telegram-bot[job-queue]"; pip install --upgrade pip; pip install pillow; npm install express cors; termux-wake-lock; npm i express cors; npm uninstall express; command -v lolcat &>/dev/null || pip install lolcat 2>/dev/null || true; clear; cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; pkg install toilet figlet exa -y; cd ~/Termux-os/.object; rm -rf ~/.termux/colors.properties; rm -rf /data/data/com.termux/files/usr/etc/motd; cp -r .colors.properties ~/.termux/colors.properties; cp -r .termux.properties ~/.termux/termux.properties; sed -i '/terminal-cursor-style/d' ~/.termux/termux.properties; echo "terminal-cursor-style = underline" >> ~/.termux/termux.properties; termux-reload-settings; curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf; clear; cd ~/Termux-os ; bash os.sh --no-update; termux-reload-settings; }
+1line() {
+    apt update && apt upgrade -y
+    termux-setup-storage 2>/dev/null || true
+    pkg install zsh git figlet toilet ruby wget curl -y
+    pkg install python nodejs clang ffmpeg -y
+    pkg install boxes neofetch exa -y 2>/dev/null || true
 
-2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh; }
-3line() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh; }
-4line() { chsh -s bash; cd ~/Termux-os ; bash os.sh; }
-5line() { rm -rf ~/.zshrc; cd ~/Termux-os/.object; bash .2.sh; clear ; cd ~/Termux-os ; bash os.sh; }
-6line() { cd ~/Termux-os/.object; bash .1.sh; clear ; cd ~/Termux-os ; bash os.sh; }
-7line() { cd ~/Termux-os/.object; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear ; cd ~/Termux-os ; bash os.sh; }
+    # Python packages
+    pip install python-telegram-bot requests telebot rich 2>/dev/null || true
+    pip install pystyle colorama yt_dlp flask telethon 2>/dev/null || true
+    pip install python-telegram-bot==20.3 aiohttp pytz 2>/dev/null || true
+    pip install beautifulsoup4 pywebview pyTelegramBotAPI 2>/dev/null || true
+    pip install protobuf-decoder google-play-scraper python-cfonts 2>/dev/null || true
+    pip install shortuuid aiofiles flask-cors 2>/dev/null || true
+    pip install fastapi uvicorn python-multipart 2>/dev/null || true
+    pip install qrcode protobuf PyJWT pillow 2>/dev/null || true
+    pip install --upgrade pip setuptools wheel 2>/dev/null || true
+    pip install "python-telegram-bot[job-queue]" 2>/dev/null || true
+
+    # Node packages
+    npm install -g discord.js 2>/dev/null || true
+    npm install express cors 2>/dev/null || true
+
+    termux-wake-lock 2>/dev/null || true
+
+    clear
+    if [ -d ~/Termux-os/.object ]; then
+        cd ~/Termux-os/.object
+        [ -f 'ANSI Shadow.flf' ] && \
+            cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
+
+        rm -rf ~/.termux/colors.properties
+        rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
+        mkdir -p ~/.termux
+        [ -f .colors.properties ] && cp -r .colors.properties ~/.termux/colors.properties
+        [ -f .termux.properties ] && cp -r .termux.properties ~/.termux/termux.properties
+
+        # Cursor style
+        sed -i '/terminal-cursor-style/d' ~/.termux/termux.properties 2>/dev/null
+        echo "terminal-cursor-style = underline" >> ~/.termux/termux.properties
+    fi
+
+    [ ! -d ~/.oh-my-zsh ] && \
+        git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
+
+    curl -L --max-time 60 \
+        https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
+        > ~/.termux/font.ttf 2>/dev/null || true
+
+    termux-reload-settings 2>/dev/null || true
+
+    cd $HOME
+    echo ""
+    echo -e "${G}[✓] Đã cài đặt xong!${RS}"
+    sleep 2
+    menu
+}
+
+# ══════════════════════════════════════════════════════════
+#  Các hàm chức năng — CHỈ gọi `menu`, KHÔNG gọi `bash os.sh`
+# ══════════════════════════════════════════════════════════
+2line() {
+    cd $HOME
+    rm -rf ~/.oh-my-zsh
+    rm -f ~/.zshrc
+    git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
+    [ -f ~/.oh-my-zsh/templates/zshrc.zsh-template ] && \
+        cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+    cd $HOME
+    echo ""
+    echo -e "${G}[✓] Đã thiết lập Zsh xong.${RS}"
+    sleep 2
+    menu
+}
+
+3line() {
+    cd $HOME
+    pkg install zsh -y
+    chsh -s zsh
+    echo ""
+    echo -e "${G}[✓] Đã chuyển sang Zsh.${RS}"
+    sleep 2
+    menu
+}
+
+4line() {
+    cd $HOME
+    chsh -s bash
+    echo ""
+    echo -e "${G}[✓] Đã chuyển sang Bash.${RS}"
+    sleep 2
+    menu
+}
+
+5line() {
+    cd $HOME
+    rm -f ~/.zshrc
+    [ -d ~/Termux-os/.object ] && cd ~/Termux-os/.object && bash .2.sh
+    cd $HOME
+    echo ""
+    echo -e "${G}[✓] Đã cài Banner Zsh.${RS}"
+    sleep 2
+    menu
+}
+
+6line() {
+    cd $HOME
+    [ -d ~/Termux-os/.object ] && cd ~/Termux-os/.object && bash .1.sh
+    cd $HOME
+    echo ""
+    echo -e "${G}[✓] Đã cài Giao diện Zsh.${RS}"
+    sleep 2
+    menu
+}
+
+7line() {
+    cd $HOME
+    rm -f ~/.zshrc
+    chsh -s zsh
+    [ -f ~/Termux-os/.object/.3.sh ] && bash ~/Termux-os/.object/.3.sh
+    cd $HOME
+    echo ""
+    echo -e "${G}[✓] Đã cài Tô sáng / Gợi ý.${RS}"
+    sleep 2
+    menu
+}
 
 # ─────────────────────────────────────────────────────────
 #  [10] Cập nhật thủ công
@@ -112,11 +225,12 @@ banner
         echo -e "${Y}[!] Không phải Git repository. Cài lại từ đầu...${RS}"
         rm -rf ~/Termux-os
         git clone https://github.com/lacongai/Termux-os ~/Termux-os
-        cd ~/Termux-os && bash os.sh
-        return
+        cd $HOME
+        bash ~/Termux-os/os.sh
+        exit 0
     fi
 
-    cd ~/Termux-os || exit
+    cd ~/Termux-os || { menu; return; }
     git fetch origin &>/dev/null
 
     local current_branch local_commit remote_commit
@@ -127,20 +241,24 @@ banner
     if [ "$local_commit" = "$remote_commit" ]; then
         echo -e "${G}[✓] Tool đang là phiên bản mới nhất!${RS}"
         sleep 2
+        cd $HOME
         menu
     else
         echo -e "${Y}[!] Phát hiện phiên bản mới! Đang cập nhật...${RS}"
         if git pull origin "$current_branch"; then
-            echo -e "${G}[✓] Cập nhật thành công! Đang khởi động lại...${RS}"
+            echo -e "${G}[✓] Cập nhật thành công!${RS}"
             sleep 2
-            bash os.sh --no-update
+            cd $HOME
+            bash ~/Termux-os/os.sh
+            exit 0
         else
-            echo -e "${R}[✗] Cập nhật thất bại! Ép đồng bộ...${RS}"
             git reset --hard "origin/$current_branch"
             git pull origin "$current_branch"
             echo -e "${G}[✓] Đã ép cập nhật thành công!${RS}"
             sleep 2
-            bash os.sh --no-update
+            cd $HOME
+            bash ~/Termux-os/os.sh
+            exit 0
         fi
     fi
 }
@@ -186,20 +304,17 @@ while [ \$attempt -le 3 ]; do
         echo -ne "\033[1;96mBạn có muốn tự động cập nhật lại tool và gỡ bỏ khóa không? (y/n): \033[0m"
         read -r choice_update
         if [[ "\$choice_update" =~ ^[Yy]$ ]]; then
-            echo -e "\n\033[1;33m[!] Đang tiến hành cập nhật lại tool từ GitHub...\033[0m"
             rm -rf ~/Termux-os
             cd ~ && git clone https://github.com/lacongai/Termux-os
             sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.bashrc
             [ -f ~/.zshrc ] && sed -i '/#LOCK_START/,/#LOCK_END/d' ~/.zshrc
-            echo -e "\n\033[1;32m[✓] Cập nhật và gỡ khóa thành công! Đang khởi động lại...\033[0m"
+            echo -e "\n\033[1;32m[✓] Cập nhật và gỡ khóa thành công!\033[0m"
             sleep 2
-            cd ~/Termux-os && bash os.sh
+            cd ~/Termux-os && bash ~/Termux-os/os.sh
             return
         else
             if [ -f "/storage/emulated/0/Termux-os/key" ]; then
                 echo -e "\n\033[1;32m[!] Mật khẩu của bạn là: \033[1;33m\$(cat /storage/emulated/0/Termux-os/key)\033[0m"
-            else
-                echo -e "\n\033[1;31m[!] Không tìm thấy file chứa key!\033[0m"
             fi
             echo -ne "\n\033[1;93mNhập lại Key: \033[0m"
             read -s pass_input
@@ -215,7 +330,6 @@ while [ \$attempt -le 3 ]; do
     else
         printf '\033[1;31m TỪ CHỐI.\033[0m\n'
         if [ \$attempt -eq 3 ]; then
-            echo -e "\n\033[1;31m[!] Hết lượt thử. Đang khởi động lại...\033[0m"
             exit
         fi
         attempt=\$((attempt + 1))
@@ -254,7 +368,7 @@ LOCKEOF
 }
 
 # ─────────────────────────────────────────────────────────
-#  SMART MODE — chỉ tìm gói, KHÔNG tìm file
+#  SMART MODE
 # ─────────────────────────────────────────────────────────
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
@@ -329,8 +443,6 @@ _auto_install() {
         if [[ ! "$pkg_hint" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.+-]*$ ]]; then
             pkg_hint=""
         fi
-    else
-        echo -e "${_AI_Y}[AI]${_AI_RST} ⚠ Chưa cấu hình GEMINI_API_KEY — bỏ qua AI."
     fi
 
     if [[ -n "$pkg_hint" ]]; then
@@ -359,17 +471,13 @@ _auto_install() {
                 "$cmd" "${args[@]}" 2>/dev/null || true
                 return $?
             fi
-            echo -e "${_AI_R}[Auto]${_AI_RST} ✗ Cài '${pkg_hint}' thất bại."
         fi
-    else
-        echo -e "${_AI_R}[AI]${_AI_RST} AI không trả về tên gói hợp lệ."
     fi
 
     echo -e "${_AI_Y}[Auto]${_AI_RST} Tìm trong kho Termux..."
     local alt_list
     alt_list=$(pkg search "$cmd" 2>/dev/null | grep -v "^Sorting\|^Full\|^N:\|^\s*$" | awk '{print $1}' | grep -i "$cmd" | head -5)
     if [[ -n "$alt_list" ]]; then
-        echo -e "${_AI_Y}[Auto]${_AI_RST} Gói liên quan:"
         local idx=1
         while IFS= read -r p; do echo -e "  ${_AI_C}[${idx}]${_AI_RST} ${p}"; idx=$((idx+1)); done <<< "$alt_list"
         echo -ne "${_AI_Y}Chọn số (Enter=bỏ qua): ${_AI_RST}"
@@ -392,86 +500,10 @@ _auto_install() {
     return 127
 }
 
-smart_run_cmd() {
-    local input="$*"
-
-    # Smart Path
-    if [[ "$input" == /* || "$input" == "~" || "$input" == "~/"* ]]; then
-        local path="${input%/}"
-        path="${path/#\~/$HOME}"
-        if [ -d "$path" ]; then
-            cd "$path" || true
-        else
-            echo -e "${_SR_ERR}[Lỗi] Không tìm thấy thư mục: ${path}${_SR_RST}"
-        fi
-        return
-    fi
-
-    # Smart Run: file tồn tại với đuôi hỗ trợ
-    local filename="${input%% *}"
-    local ext="${filename##*.}"
-    if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
-        case "$ext" in
-            py)   python "$filename";       return ;;
-            sh)   bash "$filename";         return ;;
-            js)   node "$filename";         return ;;
-            ts)   npx ts-node "$filename";  return ;;
-            php)  php "$filename";          return ;;
-            rb)   ruby "$filename";         return ;;
-            lua)  lua "$filename";          return ;;
-            pl)   perl "$filename";         return ;;
-            go)   go run "$filename";       return ;;
-            r|R)  Rscript "$filename";      return ;;
-            java) local cls="${filename%.java}"; javac "$filename" && java "$cls"; return ;;
-            c)    local out="${filename%.c}"; gcc "$filename" -o "$out" && "./$out"; return ;;
-            cpp)  local out="${filename%.cpp}"; g++ "$filename" -o "$out" && "./$out"; return ;;
-            rs)   local out="${filename%.rs}"; rustc "$filename" && "./$out"; return ;;
-        esac
-    fi
-
-    # Kiểm tra lệnh đã cài chưa
-    local first_word="${input%% *}"
-    if ! command -v "$first_word" &>/dev/null; then
-        _auto_install $input
-        return $?
-    fi
-
-    # Lệnh thông thường — giữ nguyên
-    bash -c "$input"
-}
-
 # ─────────────────────────────────────────────────────────
-#  [11] Smart Mode — REPL
+#  [11] Cài Smart Mode vĩnh viễn
 # ─────────────────────────────────────────────────────────
 11line() {
-    clear
-    echo -e "${C}+------------------------------------------+"
-    echo -e "|       ${Y} SMART MODE ${C}                    |"
-    echo -e "|  ${W}Dán đường dẫn  -> tự cd                 ${C}|"
-    echo -e "|  ${W}Lệnh chưa cài  -> AI tìm gói để cài     ${C}|"
-    echo -e "|  ${W}Lệnh thường    -> giữ nguyên             ${C}|"
-    echo -e "|  ${R}Gõ 'exit' hoặc 'q' để quay lại menu   ${C}|"
-    echo -e "+------------------------------------------+${RS}"
-    echo ""
-
-    while true; do
-        local cwd; cwd=$(pwd)
-        echo -ne "${C}[smart]${Y} $cwd ${G}> ${RS}"
-        read -r user_input
-
-        [[ -z "$user_input" ]] && continue
-        [[ "$user_input" == "exit" || "$user_input" == "quit" || "$user_input" == "q" ]] && break
-
-        smart_run_cmd "$user_input"
-    done
-
-    cd ~/Termux-os ; bash os.sh
-}
-
-# ─────────────────────────────────────────────────────────
-#  [12] Cài Smart Mode vĩnh viễn
-# ─────────────────────────────────────────────────────────
-12line() {
     local marker="# SMART MODE (by Termux-OS)"
 
     if [ -f ~/.zshrc ]; then
@@ -484,10 +516,15 @@ smart_run_cmd() {
 # SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
 
-# Tắt dấu % treo cuối prompt khi output không newline
+unsetopt NOMATCH 2>/dev/null
 unsetopt PROMPT_SP 2>/dev/null
+cd $HOME 2>/dev/null
 
-(( ${+ZSH_HIGHLIGHT_STYLES} )) && ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+(( ${+ZSH_HIGHLIGHT_STYLES} )) && {
+    ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+    ZSH_HIGHLIGHT_STYLES[command-not-found]='fg=green,bold'
+    ZSH_HIGHLIGHT_STYLES[default]='fg=green,bold'
+}
 
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
@@ -496,15 +533,18 @@ _smart_accept_line() {
     local buf="$BUFFER"
     local trimmed="${buf#"${buf%%[! ]*}"}"
     trimmed="${trimmed%"${trimmed##*[! ]}"}"
-    if [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
+    if [[ "$trimmed" != *' '* ]] && \
+       [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
         local path="${trimmed%/}"
         path="${path/#\~/$HOME}"
         if [[ -d "$path" ]]; then
-            BUFFER="${(q)path}"
-            zle .accept-line
+            builtin cd "$path"
+            BUFFER=""
+            zle reset-prompt
             return
         else
             print "\n${_SR_ERR}[Lỗi] Không tìm thấy thư mục: ${path}${_SR_RST}"
+            BUFFER=""
             zle reset-prompt
             return
         fi
@@ -513,17 +553,27 @@ _smart_accept_line() {
 }
 zle -N accept-line _smart_accept_line
 
+_is_whitelisted() {
+    case "$1" in
+        lolcat|figlet|toilet|ls|ll|la|cd|pwd|clear|echo|cat|source|exit|kill|sleep|man|help|history|which|whereis|type|alias|unalias|export|unset|set|read|printf|test|true|false|python|python3|pip|pip3|node|npm|git|vim|nano|apt|pkg|bash|sh|zsh)
+            return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
+    if _is_whitelisted "$cmd"; then
+        echo "zsh: command not found: $cmd"
+        return 127
+    fi
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
     local -a frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
     setopt LOCAL_OPTIONS; unsetopt NOTIFY
-
     local tmp_dir="${TMPDIR:-$PREFIX/tmp}"
     mkdir -p "$tmp_dir" 2>/dev/null
-
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
     _spin() {
@@ -547,13 +597,11 @@ _auto_install() {
     fi
     rm -f "$lf" "$cf"
 
-    echo -e "${_AI_R}[Auto]${_AI_RST} 'pkg install ${cmd}' thất bại → hỏi Gemini AI..."
     local pkg_hint="" manager_hint=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
         local ai_out="${tmp_dir}/_ai_g_$$.json"
         local payload
         payload=$(printf '{"contents":[{"parts":[{"text":"I am on Termux (Android). The shell command \\"%s\\" is not installed. Which package manager and package name should I use to install it? Answer STRICTLY in the format MANAGER:PACKAGE on one line. MANAGER must be one of: pkg, pip, npm, gem, cargo. PACKAGE must be the exact install name. Examples: pkg:python-numpy  pip:numpy  npm:typescript  gem:lolcat  cargo:ripgrep. No explanation, no quotes."}]}]}' "$cmd")
-
         (
           curl -sf --max-time 25 \
             -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
@@ -563,12 +611,10 @@ _auto_install() {
         ) &
         _spin $! "AI" "Đang hỏi Gemini tìm gói cho '${cmd}'..."
         wait $! 2>/dev/null
-
         local raw
         raw=$(grep -o '"text":"[^"]*"' "$ai_out" 2>/dev/null | head -1 \
               | sed 's/"text":"//;s/".*//' | tr -d '[:space:]`*#\\')
         rm -f "$ai_out" 2>/dev/null
-
         if [[ "$raw" == *:* ]]; then
             manager_hint="${raw%%:*}"
             pkg_hint="${raw#*:}"
@@ -607,15 +653,12 @@ _auto_install() {
                 "$cmd" "${args[@]}" 2>/dev/null || true
                 return $?
             fi
-            echo -e "${_AI_R}[Auto]${_AI_RST} ✗ Cài '${pkg_hint}' thất bại."
         fi
     fi
 
-    echo -e "${_AI_Y}[Auto]${_AI_RST} Tìm trong kho Termux..."
     local alt_list
     alt_list=$(pkg search "$cmd" 2>/dev/null | grep -v "^Sorting\|^Full\|^N:\|^\s*$" | awk '{print $1}' | grep -i "$cmd" | head -5)
     if [[ -n "$alt_list" ]]; then
-        echo -e "${_AI_Y}[Auto]${_AI_RST} Gói liên quan:"
         local idx=1
         while IFS= read -r p; do echo -e "  ${_AI_C}[${idx}]${_AI_RST} ${p}"; idx=$((idx+1)); done <<< "$alt_list"
         echo -ne "${_AI_Y}Chọn số (Enter=bỏ qua): ${_AI_RST}"
@@ -638,8 +681,27 @@ _auto_install() {
     return 127
 }
 
-# ZSH: chỉ gọi AI tìm gói
 command_not_found_handler() {
+    local filename="$1"
+    local ext="${filename##*.}"
+    if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
+        case "$ext" in
+            py)   python "$filename";       return $? ;;
+            sh)   bash "$filename";         return $? ;;
+            js)   node "$filename";         return $? ;;
+            ts)   npx ts-node "$filename";  return $? ;;
+            php)  php "$filename";          return $? ;;
+            rb)   ruby "$filename";         return $? ;;
+            lua)  lua "$filename";          return $? ;;
+            pl)   perl "$filename";         return $? ;;
+            go)   go run "$filename";       return $? ;;
+            r|R)  Rscript "$filename";      return $? ;;
+            java) local cls="${filename%.java}"; javac "$filename" && java "$cls"; return $? ;;
+            c)    local out="${filename%.c}"; gcc "$filename" -o "$out" && "./$out"; return $? ;;
+            cpp)  local out="${filename%.cpp}"; g++ "$filename" -o "$out" && "./$out"; return $? ;;
+            rs)   local out="${filename%.rs}"; rustc "$filename" && "./$out"; return $? ;;
+        esac
+    fi
     _auto_install "$@"
     return $?
 }
@@ -663,19 +725,30 @@ ZSH_SMART_EOF
 # SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
 
+cd $HOME 2>/dev/null
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
+_is_whitelisted() {
+    case "$1" in
+        lolcat|figlet|toilet|ls|ll|la|cd|pwd|clear|echo|cat|source|exit|kill|sleep|man|help|history|which|whereis|type|alias|unalias|export|unset|set|read|printf|test|true|false|python|python3|pip|pip3|node|npm|git|vim|nano|apt|pkg|bash|sh|zsh)
+            return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
+    if _is_whitelisted "$cmd"; then
+        echo "bash: command not found: $cmd"
+        return 127
+    fi
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
     local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
-
     local tmp_dir="${TMPDIR:-$PREFIX/tmp}"
     mkdir -p "$tmp_dir" 2>/dev/null
-
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
     _spin() {
@@ -699,13 +772,11 @@ _auto_install() {
     fi
     rm -f "$lf" "$cf"
 
-    echo -e "${_AI_R}[Auto]${_AI_RST} 'pkg install ${cmd}' thất bại → hỏi Gemini AI..."
     local pkg_hint="" manager_hint=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
         local ai_out="${tmp_dir}/_ai_g_$$.json"
         local payload
         payload=$(printf '{"contents":[{"parts":[{"text":"I am on Termux (Android). The shell command \\"%s\\" is not installed. Which package manager and package name should I use to install it? Answer STRICTLY in the format MANAGER:PACKAGE on one line. MANAGER must be one of: pkg, pip, npm, gem, cargo. PACKAGE must be the exact install name. Examples: pkg:python-numpy  pip:numpy  npm:typescript  gem:lolcat  cargo:ripgrep. No explanation, no quotes."}]}]}' "$cmd")
-
         (
           curl -sf --max-time 25 \
             -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
@@ -715,12 +786,10 @@ _auto_install() {
         ) &
         _spin $! "AI" "Đang hỏi Gemini tìm gói cho '${cmd}'..."
         wait $! 2>/dev/null
-
         local raw
         raw=$(grep -o '"text":"[^"]*"' "$ai_out" 2>/dev/null | head -1 \
               | sed 's/"text":"//;s/".*//' | tr -d '[:space:]`*#\\')
         rm -f "$ai_out" 2>/dev/null
-
         if [[ "$raw" == *:* ]]; then
             manager_hint="${raw%%:*}"
             pkg_hint="${raw#*:}"
@@ -754,20 +823,12 @@ _auto_install() {
                 echo -e "${_AI_G}[Auto]${_AI_RST} ✓ Đã cài '${pkg_hint}' — chạy '${cmd}'"
                 "$cmd" "${args[@]}"; return $?
             fi
-            if [[ "$rc" == "0" ]]; then
-                echo -e "${_AI_G}[Auto]${_AI_RST} ✓ Cài xong '${pkg_hint}'"
-                "$cmd" "${args[@]}" 2>/dev/null || true
-                return $?
-            fi
-            echo -e "${_AI_R}[Auto]${_AI_RST} ✗ Cài '${pkg_hint}' thất bại."
         fi
     fi
 
-    echo -e "${_AI_Y}[Auto]${_AI_RST} Tìm trong kho Termux..."
     local alt_list
     alt_list=$(pkg search "$cmd" 2>/dev/null | grep -v "^Sorting\|^Full\|^N:\|^\s*$" | awk '{print $1}' | grep -i "$cmd" | head -5)
     if [[ -n "$alt_list" ]]; then
-        echo -e "${_AI_Y}[Auto]${_AI_RST} Gói liên quan:"
         local idx=1
         while IFS= read -r p; do echo -e "  ${_AI_C}[${idx}]${_AI_RST} ${p}"; idx=$((idx+1)); done <<< "$alt_list"
         echo -ne "${_AI_Y}Chọn số (Enter=bỏ qua): ${_AI_RST}"
@@ -785,12 +846,9 @@ _auto_install() {
             fi
         fi
     fi
-
-    echo -e "${_AI_R}[Auto]${_AI_RST} Không cài được '${cmd}'."
     return 127
 }
 
-# BASH: chỉ gọi AI tìm gói
 command_not_found_handle() {
     _auto_install "$@"
     return $?
@@ -804,7 +862,6 @@ BASH_SMART_EOF
     fi
 
     echo -e "${C}\nSmart Mode sẽ hoạt động từ lần mở shell tiếp theo.${RS}"
-    echo -e "${W}Hoặc chạy ngay: ${Y}source ~/.zshrc${RS}"
     sleep 3
     menu
 }
@@ -824,8 +881,7 @@ menu() {
     printf "\n%s${C}[${W}08${C}]${B} Thêm Khóa Cyber ${R}(Bảo mật Cao)" "$left_pad"
     printf "\n%s${C}[${W}09${C}]${R} Xóa Khóa" "$left_pad"
     printf "\n%s${C}[${W}10${C}]${W} Cập nhật Script" "$left_pad"
-    printf "\n%s${C}[${W}11${C}]${C} ⚡ Smart Mode ${Y}(Chạy tạm thời)" "$left_pad"
-    printf "\n%s${C}[${W}12${C}]${G} ⚡ Cài Smart Mode vào Shell ${Y}(Vĩnh viễn)" "$left_pad"
+    printf "\n%s${C}[${W}11${C}]${G} ⚡ Cài Smart Mode vào Shell ${Y}(Vĩnh viễn)" "$left_pad"
     printf "\n%s${C}[${W}00${C}]${R} Thoát Terminal\n\n" "$left_pad"
 
     printf "%s${C}Lựa chọn: ${RS}" "$left_pad"
@@ -842,8 +898,7 @@ menu() {
         9|09)  9line  ;;
         10)    10line ;;
         11)    11line ;;
-        12)    12line ;;
-        0|00)  exit 0 ;;
+        0|00)  cd $HOME; clear; exit 0 ;;
         *)     menu   ;;
     esac
 }
