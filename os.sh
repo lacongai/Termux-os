@@ -7,6 +7,9 @@ C='\033[1;96m'
 W='\033[1;97m'
 RS='\033[0m'
 
+# ── Đảm bảo script chạy từ home ─────────────────────────────
+cd $HOME 2>/dev/null || cd /data/data/com.termux/files/home
+
 term_width=$(tput cols 2>/dev/null || echo 80)
 BOX_WIDTH=$(( term_width > 60 ? 58 : term_width - 2 ))
 margin=$(( (term_width - BOX_WIDTH) / 2 ))
@@ -44,29 +47,21 @@ banner() {
     echo -e ""
 }
 
-# ══════════════════════════════════════════════════════════
-#  BANNER 7 MÀU — helper
-# ══════════════════════════════════════════════════════════
 _banner_7mau() {
     local text="$1"
     local font="$2"
     local width="$3"
 
-    # Ưu tiên 1: lolcat (nếu cài được trên Termux cũ)
-    if command -v lolcat &>/dev/null; then
-        if echo "x" | lolcat &>/dev/null; then
-            figlet -c -f "$font" -w "$width" "$text" 2>/dev/null | lolcat -f
-            return $?
-        fi
-    fi
-
-    # Ưu tiên 2: toilet --gay (Android cao / Termux mới)
     if command -v toilet &>/dev/null; then
         toilet -f "$font" -w "$width" --gay "$text" 2>/dev/null && return $?
         toilet -w "$width" --gay "$text" 2>/dev/null && return $?
     fi
 
-    # Fallback cuối: figlet thuần (không màu)
+    if command -v lolcat &>/dev/null && echo "x" | lolcat &>/dev/null 2>&1; then
+        figlet -c -f "$font" -w "$width" "$text" 2>/dev/null | lolcat -f
+        return $?
+    fi
+
     figlet -c -f "$font" -w "$width" "$text" 2>/dev/null || \
         figlet -c "$text" 2>/dev/null || \
         echo "  $text  "
@@ -78,7 +73,6 @@ _banner_7mau() {
 1line() {
     local FLAG="$HOME/.termux-os-installed"
 
-    # ── Helper kill tabs ────────────────────────────────────
     _kill_all_tabs() {
         local my_pid=$$
         for shell in zsh bash sh; do
@@ -97,21 +91,11 @@ _banner_7mau() {
         done
     }
 
-    # ── Helper cài banner tool ──────────────────────────────
     _install_banner_tool() {
         echo -e "${C}[*] Cài công cụ banner 7 màu...${RS}"
-
-        if ! command -v lolcat &>/dev/null || ! lolcat --version &>/dev/null 2>&1; then
-            rm -f "$PREFIX/bin/lolcat" 2>/dev/null
-            timeout 20 gem install lolcat --no-document &>/dev/null || true
-        fi
-
-        if command -v lolcat &>/dev/null && echo "x" | lolcat &>/dev/null 2>&1; then
-            echo -e "${G}[✓] lolcat hoạt động — dùng lolcat cho banner${RS}"
-        else
-            echo -e "${Y}[!] lolcat không chạy (Android cao) → dùng toilet --gay${RS}"
-            rm -f "$PREFIX/bin/lolcat" 2>/dev/null
-            pkg install toilet -y 2>/dev/null || true
+        pkg install toilet -y 2>/dev/null || true
+        if command -v toilet &>/dev/null; then
+            echo -e "${G}[✓] toilet hoạt động — dùng toilet --gay cho banner${RS}"
         fi
     }
 
@@ -127,25 +111,25 @@ _banner_7mau() {
         _install_banner_tool
 
         clear
-        cd ~/Termux-os/.object/ && \
-            cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
+        # Kiểm tra .object tồn tại
+        if [ -d "$HOME/Termux-os/.object" ]; then
+            cd "$HOME/Termux-os/.object" || cd $HOME
+            [ -f 'ANSI Shadow.flf' ] && \
+                cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
 
-        pkg install toilet figlet -y 2>/dev/null || true
-
-        cd ~/Termux-os/.object 2>/dev/null
-        rm -rf ~/.termux/colors.properties
-        rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
-        mkdir -p ~/.termux
-        cp -r .colors.properties ~/.termux/colors.properties
-        cp -r .termux.properties ~/.termux.properties
+            rm -rf ~/.termux/colors.properties
+            rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
+            mkdir -p ~/.termux
+            [ -f .colors.properties ] && cp -r .colors.properties ~/.termux/colors.properties
+            [ -f .termux.properties ] && cp -r .termux.properties ~/.termux.properties
+        fi
 
         curl -L --max-time 60 \
             https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
             > ~/.termux/font.ttf 2>/dev/null || true
 
-        # ── Đưa về HOME trước khi exit ──────────────────────
         clear
-        cd $HOME
+        cd $HOME           # ← Đảm bảo về HOME
 
         termux-reload-settings 2>/dev/null || true
 
@@ -173,27 +157,32 @@ _banner_7mau() {
     _install_banner_tool
 
     clear
-    cd ~/Termux-os/.object/ && \
-        cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
+    if [ -d "$HOME/Termux-os/.object" ]; then
+        cd "$HOME/Termux-os/.object" || cd $HOME
+        [ -f 'ANSI Shadow.flf' ] && \
+            cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
+    fi
 
     [ ! -d ~/.oh-my-zsh ] && \
         git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
 
     pkg install toilet figlet -y 2>/dev/null || true
 
-    cd ~/Termux-os/.object 2>/dev/null
-    rm -rf ~/.termux/colors.properties
-    rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
-    mkdir -p ~/.termux
-    cp -r .colors.properties ~/.termux/colors.properties
-    cp -r .termux.properties ~/.termux.properties
+    if [ -d "$HOME/Termux-os/.object" ]; then
+        cd "$HOME/Termux-os/.object" || cd $HOME
+        rm -rf ~/.termux/colors.properties
+        rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
+        mkdir -p ~/.termux
+        [ -f .colors.properties ] && cp -r .colors.properties ~/.termux/colors.properties
+        [ -f .termux.properties ] && cp -r .termux.properties ~/.termux.properties
+    fi
 
     curl -L --max-time 60 \
         https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
         > ~/.termux/font.ttf 2>/dev/null || true
 
     clear
-    cd $HOME          # ← Về HOME
+    cd $HOME           # ← Đảm bảo về HOME
 
     termux-reload-settings 2>/dev/null || true
 
@@ -203,18 +192,57 @@ _banner_7mau() {
     echo -e "${W}→ Sau khi xong, ấn ${Y}1${W} lần nữa để cài lại + kill tabs + thoát.${RS}"
     echo ""
     sleep 4
-    cd ~/Termux-os
-    menu
+    cd $HOME
+    bash ~/Termux-os/os.sh
 }
 
-# ── Các hàm chức năng — ĐÃ ĐỔI cd ~/Termux-os → cd ~ ─────────
-2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~ ; bash os.sh; }
-3line() { pkg install zsh; chsh -s zsh; cd ~ ; bash os.sh; }
-4line() { chsh -s bash; cd ~ ; bash os.sh; }
-5line() { rm -rf ~/.zshrc; cd ~/Termux-os/.object; bash .2.sh; clear ; cd ~ ; bash os.sh; }
-6line() { cd ~/Termux-os/.object; bash .1.sh; clear ; cd ~ ; bash os.sh; }
-7line() { cd ~/Termux-os/.object; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear ; cd ~ ; bash os.sh; }
-10line() { rm -rf ~/Termux-os; cd ~; git clone https://github.com/lacongai/Termux-os; cd ~ ; bash os.sh; }
+# ══════════════════════════════════════════════════════════
+#  Các hàm chức năng — DÙNG ĐƯỜNG DẪN TUYỆT ĐỐI
+# ══════════════════════════════════════════════════════════
+2line() {
+    cd $HOME
+    [ -d ~/.oh-my-zsh ] && rm -rf ~/.oh-my-zsh
+    git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh 2>/dev/null
+    rm -f ~/.zshrc
+    [ -f ~/.oh-my-zsh/templates/zshrc.zsh-template ] && \
+        cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+    cd $HOME
+    bash ~/Termux-os/os.sh
+}
+3line() { cd $HOME; pkg install zsh -y; chsh -s zsh; bash ~/Termux-os/os.sh; }
+4line() { cd $HOME; chsh -s bash; bash ~/Termux-os/os.sh; }
+5line() {
+    cd $HOME
+    rm -f ~/.zshrc
+    [ -d ~/Termux-os/.object ] && cd ~/Termux-os/.object && bash .2.sh
+    clear
+    cd $HOME
+    bash ~/Termux-os/os.sh
+}
+6line() {
+    cd $HOME
+    [ -d ~/Termux-os/.object ] && cd ~/Termux-os/.object && bash .1.sh
+    clear
+    cd $HOME
+    bash ~/Termux-os/os.sh
+}
+7line() {
+    cd $HOME
+    [ -d ~/Termux-os/.object ] && cd ~/Termux-os/.object
+    rm -f ~/.zshrc
+    chsh -s zsh
+    [ -f ~/Termux-os/.object/.3.sh ] && bash ~/Termux-os/.object/.3.sh
+    clear
+    cd $HOME
+    bash ~/Termux-os/os.sh
+}
+10line() {
+    cd $HOME
+    rm -rf ~/Termux-os
+    git clone https://github.com/lacongai/Termux-os ~/Termux-os 2>/dev/null
+    cd $HOME
+    [ -f ~/Termux-os/os.sh ] && bash ~/Termux-os/os.sh
+}
 
 # ─────────────────────────────────────────────────────────
 #  CYBER LOCK
@@ -518,7 +546,8 @@ smart_run_cmd() {
         smart_run_cmd "$user_input"
     done
 
-    cd ~/Termux-os ; bash os.sh
+    cd $HOME
+    bash ~/Termux-os/os.sh
 }
 
 12line() {
