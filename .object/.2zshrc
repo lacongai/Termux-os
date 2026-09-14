@@ -3,28 +3,19 @@ export ZSH=$HOME/.oh-my-zsh
 plugins=(git)
 
 source $HOME/.oh-my-zsh/oh-my-zsh.sh
-
-# ── Load plugins đúng thứ tự ──────────────────────────────
-[[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && \
-    source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-[[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && \
-    source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+[[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+[[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 # ══════════════════════════════════════════════════════════
-#  FIX: Khai báo associative array TRƯỚC khi gán
+#  KHAI BÁO associative array TRƯỚC khi gán style
 # ══════════════════════════════════════════════════════════
 typeset -Ag ZSH_HIGHLIGHT_STYLES
 typeset -ag ZSH_HIGHLIGHT_PATTERNS
 
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
 
-# Unknown token → VÀNG
+# Unknown token (file .py, lệnh chưa cài) → VÀNG
 ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
-
-# Path hợp lệ (khi có cd) → XANH LAM
-ZSH_HIGHLIGHT_STYLES[path]='fg=cyan,bold'
-ZSH_HIGHLIGHT_STYLES[path_prefix]='fg=cyan'
-ZSH_HIGHLIGHT_STYLES[path_pathseparator]='fg=cyan'
 
 # Command hợp lệ → XANH LÁ
 ZSH_HIGHLIGHT_STYLES[command]='fg=green,bold'
@@ -34,17 +25,22 @@ ZSH_HIGHLIGHT_STYLES[function]='fg=green,bold'
 ZSH_HIGHLIGHT_STYLES[precommand]='fg=green,bold'
 ZSH_HIGHLIGHT_STYLES[hashed-command]='fg=green,bold'
 
-# Argument đầu tiên (subcommand) → XANH LAM NHẠT
-ZSH_HIGHLIGHT_STYLES[arg0]='fg=cyan'
+# Path (khi có cd) → XANH LÁ (đồng màu command)
+ZSH_HIGHLIGHT_STYLES[path]='fg=green,bold'
+ZSH_HIGHLIGHT_STYLES[path_prefix]='fg=green,bold'
+ZSH_HIGHLIGHT_STYLES[path_pathseparator]='fg=green,bold'
 
-# Chuỗi, comment
-ZSH_HIGHLIGHT_STYLES[default]='fg=white'
-ZSH_HIGHLIGHT_STYLES[double-quoted-argument]='fg=green'
-ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=green'
+# Argument đầu tiên (subcommand) → XANH LÁ
+ZSH_HIGHLIGHT_STYLES[arg0]='fg=green,bold'
+
+# Chuỗi → XANH LÁ
+ZSH_HIGHLIGHT_STYLES[double-quoted-argument]='fg=green,bold'
+ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=green,bold'
+
+# Comment
 ZSH_HIGHLIGHT_STYLES[comment]='fg=244'
 ZSH_HIGHLIGHT_STYLES[redirection]='fg=cyan'
 ZSH_HIGHLIGHT_STYLES[globbing]='fg=cyan'
-ZSH_HIGHLIGHT_STYLES[assign]='fg=cyan'
 
 # ── PATTERN: file đuôi phổ biến → VÀNG ────────────────────
 ZSH_HIGHLIGHT_PATTERNS+=('*.py'   'fg=yellow,bold')
@@ -60,36 +56,55 @@ ZSH_HIGHLIGHT_PATTERNS+=('*.php'  'fg=yellow,bold')
 ZSH_HIGHLIGHT_PATTERNS+=('*.java' 'fg=yellow,bold')
 
 # ══════════════════════════════════════════════════════════
-#  PATH PREVIEW: path thuần (thư mục HOẶC file) → VÀNG
-#  Chỉ chạy khi buffer là path thuần (không có cd/python...)
+#  ZLE HOOK: tô màu TOÀN DÒNG theo ngữ cảnh
+#  - Path thuần (bắt đầu / hoặc ~) → VÀNG
+#  - Command hợp lệ (cd/python/pip...) → XANH LÁ
+#  - File .py/.sh/.js... tồn tại → VÀNG
 # ══════════════════════════════════════════════════════════
 autoload -Uz add-zle-hook-widget 2>/dev/null
 
-_sr_path_preview() {
+_sr_full_line_color() {
     local buf="$BUFFER"
-    local trimmed="${buf#"${buf%%[! ]*}"}"
-    trimmed="${trimmed%"${trimmed##*[! ]}"}"
+    [[ -z "$buf" ]] && return
 
+    local trimmed="${buf#"${buf%%[! ]*}"}"
+    local first="${buf%% *}"
+
+    # 1. Path thuần (bắt đầu bằng / hoặc ~)
     if [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
         local path="${trimmed%/}"
         path="${path/#\~/$HOME}"
         local path_unescaped="${path//\\ / }"
-        # FIX LỖI 1: thư mục HOẶC file → vàng (vì chưa có cd/python...)
         if [[ -d "$path_unescaped" || -d "$path" || -f "$path_unescaped" || -f "$path" ]]; then
             region_highlight=("0 ${#buf} fg=yellow,bold")
         fi
+        return
     fi
+
+    # 2. Command hợp lệ → tô XANH LÁ toàn dòng
+    if command -v "$first" &>/dev/null; then
+        region_highlight=("0 ${#buf} fg=green,bold")
+        return
+    fi
+
+    # 3. File .py/.sh/... tồn tại → VÀNG
+    if [[ "$first" == *.* && -f "$first" ]]; then
+        region_highlight=("0 ${#buf} fg=yellow,bold")
+        return
+    fi
+    # Còn lại → để zsh-syntax-highlighting tự tô
 }
-add-zle-hook-widget line-pre-redraw _sr_path_preview 2>/dev/null
+add-zle-hook-widget line-pre-redraw _sr_full_line_color 2>/dev/null
 
 # ══════════════════════════════════════════════════════════
-#  SMART PATH: dán path → tự thêm 'cd ' khi accept
+#  SMART ACCEPT: ẩn cd, tự chạy cd/python khi Enter
 # ══════════════════════════════════════════════════════════
 _smart_accept_line() {
     local buf="$BUFFER"
     local trimmed="${buf#"${buf%%[! ]*}"}"
     trimmed="${trimmed%"${trimmed##*[! ]}"}"
 
+    # Nếu là path thuần → chạy cd ngầm, buffer hiện 'cd "..."' để lịch sử đẹp
     if [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
         local path="${trimmed%/}"
         path="${path/#\~/$HOME}"
@@ -100,6 +115,7 @@ _smart_accept_line() {
             return
         fi
     fi
+
     zle .accept-line
 }
 zle -N accept-line _smart_accept_line
@@ -149,12 +165,11 @@ draw_banner() {
 draw_banner
 
 # ══════════════════════════════════════════════════════════
-#  SMART MODE
+#  SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
-# ── Auto Install ──────────────────────────────────────────
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
@@ -164,7 +179,6 @@ _auto_install() {
     setopt LOCAL_OPTIONS; unsetopt NOTIFY
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
-    # ── Bước 1: pkg install trực tiếp ──
     echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Đang thử cài..."
     local log_file="/tmp/_ai_$$.log" code_file="/tmp/_ai_exit_$$.code"
     ( pkg install -y "$cmd" &>"$log_file"; echo $? > "$code_file" ) &
@@ -181,7 +195,6 @@ _auto_install() {
         "$cmd" "${args[@]}"; return $?
     fi
 
-    # ── Bước 2: Gemini AI ──
     echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang hỏi Gemini AI..."
     local ai_pkg=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
@@ -219,7 +232,6 @@ _auto_install() {
         fi
     fi
 
-    # ── Bước 3: pkg search ──
     echo ""
     echo -e "${_AI_Y}[Auto Install]${_AI_RST} Đang tìm gói trong kho Termux..."
     local alt_list
@@ -253,14 +265,10 @@ _auto_install() {
     return 127
 }
 
-# ══════════════════════════════════════════════════════════
-#  FIX LỖI 2: Khôi phục Smart Run trong command_not_found_handler
-# ══════════════════════════════════════════════════════════
 command_not_found_handler() {
     local filename="$1"
     local ext="${filename##*.}"
 
-    # Smart Run: file tồn tại với đuôi được hỗ trợ → chạy luôn
     if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
         case "$ext" in
             py)   python "$filename";       return $? ;;
@@ -288,7 +296,6 @@ command_not_found_handler() {
         esac
     fi
 
-    # Không phải file → Auto Install (tìm gói qua pkg/AI)
     _auto_install "$@"
     return $?
 }
