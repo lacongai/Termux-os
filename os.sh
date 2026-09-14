@@ -71,9 +71,20 @@ banner
     cp -r .termux.properties ~/.termux.properties
     curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf 2>/dev/null
     clear
+    
+    # ═══ TỰ ĐỘNG FIX LỖI FONT / % / .zshrc ═══
+    echo -e "\n${C}╔══════════════════════════════════════════╗${RS}"
+    echo -e "${C}║   ${Y}🔧  ĐANG FIX LỖI TỰ ĐỘNG  🔧${C}          ║${RS}"
+    echo -e "${C}╚══════════════════════════════════════════╝${RS}\n"
+    if [ -f ~/Termux-os/.object/.fix.sh ]; then
+        bash ~/Termux-os/.object/.fix.sh
+    else
+        echo -e "${R}[!] Không tìm thấy .fix.sh — bỏ qua bước fix${RS}"
+    fi
+    sleep 2
+    
     cd ~/Termux-os
-    bash os.sh
-    termux-reload-settings 2>/dev/null
+    menu
 }
 
 2line() { 
@@ -81,20 +92,20 @@ banner
     git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh 2>/dev/null
     cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
     cd ~/Termux-os
-    bash os.sh
+    menu
 }
 
 3line() { 
     pkg install zsh -y
     chsh -s zsh
     cd ~/Termux-os
-    bash os.sh
+    menu
 }
 
 4line() { 
     chsh -s bash
     cd ~/Termux-os
-    bash os.sh
+    menu
 }
 
 5line() { 
@@ -103,7 +114,7 @@ banner
     bash .2.sh
     clear
     cd ~/Termux-os
-    bash os.sh
+    menu
 }
 
 6line() { 
@@ -111,7 +122,7 @@ banner
     bash .1.sh
     clear
     cd ~/Termux-os
-    bash os.sh
+    menu
 }
 
 7line() { 
@@ -121,7 +132,7 @@ banner
     bash .3.sh
     clear
     cd ~/Termux-os
-    bash os.sh
+    menu
 }
 
 # ─────────────────────────────────────────────────────────
@@ -134,7 +145,7 @@ banner
         echo -e "${Y}[!] Thư mục hiện tại không phải Git repository. Đang tiến hành cài đặt lại từ đầu...${RS}"
         rm -rf ~/Termux-os
         git clone https://github.com/lacongai/Termux-os ~/Termux-os
-        cd ~/Termux-os && bash os.sh
+        cd ~/Termux-os && menu
         return
     fi
 
@@ -159,7 +170,7 @@ banner
         if git pull origin "$current_branch"; then
             echo -e "${G}[✓] Cập nhật thành công! Đang khởi động lại tool...${RS}"
             sleep 2
-            bash os.sh
+            exec bash ~/Termux-os/os.sh
         else
             echo -e "${R}[✗] Cập nhật thất bại! Có xung đột dữ liệu local (conflict).${RS}"
             echo -e "${W}Đang thử ép buộc đồng bộ với GitHub...${RS}"
@@ -167,7 +178,7 @@ banner
             git pull origin "$current_branch"
             echo -e "${G}[✓] Đã ép cập nhật thành công!${RS}"
             sleep 2
-            bash os.sh
+            exec bash ~/Termux-os/os.sh
         fi
     fi
 }
@@ -298,7 +309,6 @@ _auto_install() {
         return 127
     fi
 
-    # ── Bước 1: pkg install trực tiếp ────────────────────────
     echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Đang thử cài..."
     local log_file="${tmp_dir}/_ai_$$.log" code_file="${tmp_dir}/_ai_exit_$$.code"
     ( pkg install -y "$cmd" &>"$log_file"; echo $? > "$code_file" ) &
@@ -315,7 +325,6 @@ _auto_install() {
         "$cmd" "${args[@]}"; return $?
     fi
 
-    # ── Bước 2: Gemini AI tìm package name ───────────────────
     echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang hỏi Gemini AI..."
     local ai_pkg=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
@@ -338,7 +347,6 @@ _auto_install() {
         rm -f "$ai_out" 2>/dev/null
         
         if [[ -n "$ai_pkg" && "$ai_pkg" =~ ^[a-zA-Z0-9][a-zA-Z0-9_+.:-]*$ ]]; then
-            # Xử lý pip:packagename
             if [[ "$ai_pkg" == pip:* ]]; then
                 local pip_pkg="${ai_pkg#pip:}"
                 echo -e "${_AIA}[Auto Install AI]${_AI_RST} Gemini gợi ý (pip): ${_AI_C}${pip_pkg}${_AI_RST}"
@@ -370,7 +378,6 @@ _auto_install() {
         echo -e "${_AI_Y}[Auto Install AI]${_AI_RST} ⚠ Chưa cấu hình GEMINI_API_KEY — bỏ qua AI."
     fi
 
-    # ── Bước 3: pkg search ────────────────────────────────────
     echo ""
     echo -e "${_AI_Y}[Auto Install]${_AI_RST} Đang tìm gói trong kho Termux..."
     local alt_list
@@ -409,12 +416,35 @@ _auto_install() {
 }
 
 # ─────────────────────────────────────────────────────────
+#  [13] Fix lỗi tự động (font, %, .zshrc, .bashrc)
+# ─────────────────────────────────────────────────────────
+13line() {
+    clear
+    if [ -f ~/Termux-os/.object/.fix.sh ]; then
+        bash ~/Termux-os/.object/.fix.sh
+    else
+        echo -e "${R}[!] Không tìm thấy file .fix.sh${RS}"
+        echo -e "${Y}Đang tải lại từ GitHub...${RS}"
+        cd ~/Termux-os
+        git pull origin main 2>/dev/null || git pull origin master 2>/dev/null
+        if [ -f ~/Termux-os/.object/.fix.sh ]; then
+            bash ~/Termux-os/.object/.fix.sh
+        else
+            echo -e "${R}[✗] Vẫn không tìm thấy. Vui lòng chạy lại menu 10 để cập nhật tool.${RS}"
+        fi
+    fi
+    echo ""
+    echo -ne "${Y}Nhấn Enter để quay lại menu...${RS}"
+    read -r
+    menu
+}
+
+# ─────────────────────────────────────────────────────────
 #  [12] Cài Smart Mode vào shell (vĩnh viễn)
 # ─────────────────────────────────────────────────────────
 12line() {
     local marker="# SMART MODE (by Termux-OS)"
 
-    # ── Cài vào ~/.zshrc ────────────────────────────────────
     if [ -f ~/.zshrc ]; then
         if grep -q "$marker" ~/.zshrc 2>/dev/null; then
             echo -e "${Y}[!] Smart Mode đã có trong ~/.zshrc${RS}"
@@ -425,7 +455,13 @@ _auto_install() {
 # SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
 
-(( ${+ZSH_HIGHLIGHT_STYLES} )) && ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+# Fix: chỉ gán style nếu plugin zsh-syntax-highlighting đã load
+if (( ${+ZSH_HIGHLIGHT_STYLES} )); then
+    ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+else
+    typeset -gA ZSH_HIGHLIGHT_STYLES 2>/dev/null
+    ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold' 2>/dev/null
+fi
 
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
@@ -570,8 +606,6 @@ _auto_install() {
 }
 
 command_not_found_handler() {
-    local cmd="$1"
-    # Chỉ auto install khi là lệnh, KHÔNG tìm file
     _auto_install "$@"
     return $?
 }
@@ -585,7 +619,6 @@ ZSH_SMART_EOF
         echo -e "${Y}[!] Không tìm thấy ~/.zshrc${RS}"
     fi
 
-    # ── Cài vào ~/.bashrc ───────────────────────────────────
     if [ -f ~/.bashrc ]; then
         if grep -q "$marker" ~/.bashrc 2>/dev/null; then
             echo -e "${Y}[!] Smart Mode đã có trong ~/.bashrc${RS}"
@@ -739,7 +772,7 @@ BASH_SMART_EOF
 # ─────────────────────────────────────────────────────────
 menu() {
     banner
-    printf "\n${left_pad}${C}[${W}01${C}]${G} Cài đặt Cần thiết"
+    printf "\n${left_pad}${C}[${W}01${C}]${G} Cài đặt Cần thiết ${Y}(auto fix lỗi)${RS}"
     printf "\n${left_pad}${C}[${W}02${C}]${G} Thiết lập Zsh"
     printf "\n${left_pad}${C}[${W}03${C}]${G} Shell Zsh"
     printf "\n${left_pad}${C}[${W}04${C}]${G} Shell Bash"
@@ -750,6 +783,7 @@ menu() {
     printf "\n${left_pad}${C}[${W}09${C}]${R} Xóa Khóa"
     printf "\n${left_pad}${C}[${W}10${C}]${W} Cập nhật Script"
     printf "\n${left_pad}${C}[${W}12${C}]${G} ⚡ Cài Smart Mode vào Shell ${Y}(Vĩnh viễn)"
+    printf "\n${left_pad}${C}[${W}13${C}]${Y} 🔧 Fix lỗi font/%%/.zshrc tự động"
     printf "\n${left_pad}${C}[${W}00${C}]${R} Thoát Terminal\n\n"
 
     echo -ne "${left_pad}${C}Lựa chọn: ${RS}"
@@ -766,6 +800,7 @@ menu() {
         9|09)  9line  ;;
         10)    10line ;;
         12)    12line ;;
+        13)    13line ;;
         0|00)  exit   ;;
         *)     menu   ;;
     esac
