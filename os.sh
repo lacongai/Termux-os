@@ -26,33 +26,32 @@ print_center() {
     printf "${C}${left_pad}║%*s${color}%s${C}%*s║${RS}\n" $space_len "" "$text" $(( BOX_WIDTH - 2 - len - space_len )) ""
 }
 
+# ══════════════════════════════════════════════════════════
+#  BANNER — dùng echo -e để escape \033 được dịch đúng
+# ══════════════════════════════════════════════════════════
 banner() {
     clear
 
-    # Dùng printf với %s để không bị hiểu % trong ASCII art là format specifier
-    printf '\033[1;36m'
-    printf '%s\n' ' ______                              \033[1;31m  ___  ____'
-    printf '%s\n' '/_  __/__  _________ ___  __  ___  __\033[1;31m / _ \/ __/'
-    printf '%s\n' ' / / / _ \/ ___/ __ '"'"'__ \/ / / / |/_/\033[1;31m/ // /\ \  '
-    printf '%s\n' '/_/  \___/_/  /_/ /_/ /_/\__,_/_/|_| \033[1;31m\___/___/  '
-    printf '%s\n' '                                      '
-    printf '\033[1;37m%s\n' '      --[ \033[1;32mCông Cụ Tối Ưu Termux \033[1;37m]--       '
-    printf '%s\n' ''
-
-    printf '\033[1;31m%s\033[1;37m%s\n' ' [!]' ' Author  : \033[1;36mGấu Ngốc Nghếch (henntaiiz)'
-    printf '\033[1;31m%s\033[1;37m%s\n' ' [!]' ' Version : \033[1;93mv2 (Stable)'
-    printf '\033[1;31m%s\033[1;37m%s\n' ' [!]' ' Youtube : youtube.com/henntaiiz'
-    printf '\033[1;31m%s\033[1;37m%s\n' ' [!]' ' GitHub  : github.com/lacongai'
-    printf '%s\n' ''
-
-    printf '\033[1;32m%s\033[0m\n\n' ' =============================================='
+    echo -e "\033[1;36m ______                              \033[1;31m  ___  ____"
+    echo -e "\033[1;36m/_  __/__  _________ ___  __  ___  __\033[1;31m / _ \/ __/"
+    echo -e "\033[1;36m / / / _ \/ ___/ __ '__ \/ / / / |/_/\033[1;31m/ // /\ \  "
+    echo -e "\033[1;36m/_/  \___/_/  /_/ /_/ /_/\__,_/_/|_| \033[1;31m\___/___/  "
+    echo -e ""
+    echo -e "\033[1;97m      --[ \033[1;32mCông Cụ Tối Ưu Termux \033[1;97m]--       "
+    echo -e ""
+    echo -e "\033[1;31m [!]\033[1;97m Author  : \033[1;36mGấu Ngốc Nghếch (henntaiiz)"
+    echo -e "\033[1;31m [!]\033[1;97m Version : \033[1;93mv2 (Stable)"
+    echo -e "\033[1;31m [!]\033[1;97m Youtube : youtube.com/henntaiiz"
+    echo -e "\033[1;31m [!]\033[1;97m GitHub  : github.com/lacongai"
+    echo -e ""
+    echo -e "\033[1;32m ==============================================\033[0m"
+    echo -e ""
 }
 
 # ══════════════════════════════════════════════════════════
 #  AUTO UPDATE CHECK — chạy tự động mỗi khi mở tool
 # ══════════════════════════════════════════════════════════
 _auto_update_check() {
-    # Bỏ qua nếu được gọi với --no-update
     [ "${1:-}" = "--no-update" ] && return 0
 
     [ ! -d ~/Termux-os/.git ] && return 0
@@ -88,35 +87,87 @@ _auto_update_check() {
     fi
 }
 
-# Gọi auto-update (trừ khi có --no-update)
 _auto_update_check "${1:-}"
 
 banner
 
 # ══════════════════════════════════════════════════════════
-#  Các hàm cài đặt (1line..7line)
+#  1line — Cài đặt: lần 1 cài đầy đủ, lần 2+ chỉ cập nhật
 # ══════════════════════════════════════════════════════════
 1line() {
-    apt update && apt upgrade
-    pkg install zsh git figlet toilet ruby wget curl -y
-    gem install lolcat
-    clear
-    cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf
-    git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
-    pkg install toilet figlet exa -y
-    cd ~/Termux-os/.object
-    rm -rf ~/.termux/colors.properties
-    rm -rf /data/data/com.termux/files/usr/etc/motd
-    cp -r .colors.properties ~/.termux/colors.properties
-    cp -r .termux.properties ~/.termux.properties
-    curl -L https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf > ~/.termux/font.ttf
-    clear
-    # ── FIX: thêm scheme https://, tách lệnh không phụ thuộc &&, chặn lỗi
-    termux-open-url "https://h4ck3r.me" 2>/dev/null || true
-    termux-reload-settings 2>/dev/null || true
-    cd ~/Termux-os
-    bash os.sh --no-update
+    local FLAG="$HOME/.termux-os-installed"
+    local FIRST_TIME=1
+    [ -f "$FLAG" ] && FIRST_TIME=0
+
+    if [ "$FIRST_TIME" = "1" ]; then
+        echo -e "\n${C}[Lần đầu] Đang cài đặt đầy đủ...${RS}\n"
+    else
+        echo -e "\n${Y}[Lần 2+] Chỉ cập nhật, không cài lại.${RS}\n"
+    fi
+
+    # ── Bước 1: cập nhật repo & gói cơ bản ───────────────────
+    echo -e "${C}[1/5] Cập nhật apt...${RS}"
+    apt update -y && apt upgrade -y
+
+    echo -e "${C}[2/5] Cài gói cần thiết...${RS}"
+    pkg install -y zsh git figlet toilet ruby wget curl exa
+
+    if ! command -v lolcat &>/dev/null; then
+        echo -e "${C}[*] Cài lolcat...${RS}"
+        gem install lolcat 2>/dev/null || true
+    fi
+
+    # ── Bước 2: chỉ clone Oh-My-Zsh lần đầu ──────────────────
+    if [ "$FIRST_TIME" = "1" ]; then
+        echo -e "${C}[3/5] Cài Oh-My-Zsh...${RS}"
+        [ ! -d "$HOME/.oh-my-zsh" ] && \
+            git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
+    else
+        echo -e "${C}[3/5] Bỏ qua Oh-My-Zsh (đã có).${RS}"
+    fi
+
+    # ── Bước 3+4: copy figlet font & config Termux ───────────
+    if [ -d "$HOME/Termux-os/.object" ]; then
+        cd "$HOME/Termux-os/.object" || true
+
+        if [ -f 'ANSI Shadow.flf' ] && [ -d "$PREFIX/share/figlet" ]; then
+            [ ! -f "$PREFIX/share/figlet/ASCII-Shadow.flf" ] && \
+                cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf"
+        fi
+
+        echo -e "${C}[4/5] Cập nhật giao diện Termux...${RS}"
+        rm -rf ~/.termux/colors.properties
+        rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
+
+        mkdir -p ~/.termux
+        [ -f .colors.properties ] && cp -r .colors.properties ~/.termux/colors.properties
+        [ -f .termux.properties ] && cp -r .termux.properties ~/.termux.properties
+
+        if [ ! -f ~/.termux/font.ttf ] || [ "$(stat -c %s ~/.termux/font.ttf 2>/dev/null || echo 0)" -lt 102400 ]; then
+            echo -e "${C}[*] Đang tải font FiraCode Nerd Font...${RS}"
+            curl -L --max-time 60 \
+                https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
+                -o ~/.termux/font.ttf 2>/dev/null || true
+        fi
+    fi
+
+    # ── Bước 5: chỉ mở browser + reload LẦN ĐẦU ──────────────
+    if [ "$FIRST_TIME" = "1" ]; then
+        echo -e "${C}[5/5] Hoàn tất! Mở liên kết và reload Termux...${RS}"
+        termux-open-url "https://h4ck3r.me" 2>/dev/null || true
+        termux-reload-settings 2>/dev/null || true
+        touch "$FLAG"
+        echo -e "${G}[✓] Cài đặt xong. Hãy mở lại Termux để áp dụng.${RS}"
+        sleep 3
+        exit 0
+    else
+        echo -e "${G}[✓] Đã cập nhật xong (không cần khởi động lại).${RS}"
+        sleep 2
+        cd ~/Termux-os
+        bash os.sh --no-update
+    fi
 }
+
 2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh --no-update; }
 3line() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh --no-update; }
 4line() { chsh -s bash; cd ~/Termux-os ; bash os.sh --no-update; }
@@ -288,8 +339,6 @@ fi
 mkdir -p "$TMPDIR" 2>/dev/null
 
 # ── Hàm auto install dùng chung ───────────────────────────
-# CHỈ tìm gói để cài qua: pkg → AI (pkg/pip/npm/gem/cargo) → pkg search
-# KHÔNG tự đoán file trong thư mục hiện tại.
 _auto_install() {
     local cmd="$1"; shift; local args=("$@")
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
@@ -302,7 +351,6 @@ _auto_install() {
 
     if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
 
-    # Helper spinner
     _spin() {
         local pid=$1 label=$2 text=$3 i=0
         while kill -0 "$pid" 2>/dev/null; do
@@ -325,7 +373,7 @@ _auto_install() {
     fi
     rm -f "$lf" "$cf"
 
-    # ── Bước 2: Gemini AI tìm gói (pkg/pip/npm/gem/cargo) ────
+    # ── Bước 2: Gemini AI tìm gói ────────────────────────────
     echo -e "${_AI_R}[Auto]${_AI_RST} 'pkg install ${cmd}' thất bại → hỏi Gemini AI..."
     local pkg_hint="" manager_hint=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
@@ -354,7 +402,6 @@ _auto_install() {
         else
             pkg_hint="$raw"
         fi
-
         [[ ! "$manager_hint" =~ ^(pkg|pip|npm|gem|cargo)$ ]] && manager_hint="pkg"
         if [[ ! "$pkg_hint" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.+-]*$ ]]; then
             pkg_hint=""
@@ -545,7 +592,6 @@ _auto_install() {
         printf "\r\033[2K"
     }
 
-    # ── Bước 1: pkg install trực tiếp ────────────────────────
     echo -e "${_AI_C}[Auto]${_AI_RST} '${cmd}' chưa được cài. Đang thử 'pkg install ${cmd}'..."
     local lf="${tmp_dir}/_ai_$$.log" cf="${tmp_dir}/_ai_$$.code"
     ( pkg install -y "$cmd" &>"$lf"; echo $? > "$cf" ) &
@@ -558,7 +604,6 @@ _auto_install() {
     fi
     rm -f "$lf" "$cf"
 
-    # ── Bước 2: Gemini AI ────────────────────────────────────
     echo -e "${_AI_R}[Auto]${_AI_RST} 'pkg install ${cmd}' thất bại → hỏi Gemini AI..."
     local pkg_hint="" manager_hint=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
@@ -593,7 +638,6 @@ _auto_install() {
         fi
     fi
 
-    # ── Bước 3: cài theo AI ───────────────────────────────────
     if [[ -n "$pkg_hint" ]]; then
         echo -e "${_AIA}[AI]${_AI_RST} Gợi ý: ${_AI_C}${manager_hint} install ${pkg_hint}${_AI_RST}"
         echo -ne "${_AI_Y}Cài ngay? (y/n, Enter=y): ${_AI_RST}"
@@ -624,7 +668,6 @@ _auto_install() {
         fi
     fi
 
-    # ── Bước 4: fallback pkg search ───────────────────────────
     echo -e "${_AI_Y}[Auto]${_AI_RST} Tìm trong kho Termux..."
     local alt_list
     alt_list=$(pkg search "$cmd" 2>/dev/null | grep -v "^Sorting\|^Full\|^N:\|^\s*$" | awk '{print $1}' | grep -i "$cmd" | head -5)
@@ -702,7 +745,6 @@ _auto_install() {
         printf "\r\033[2K"
     }
 
-    # ── Bước 1: pkg install trực tiếp ────────────────────────
     echo -e "${_AI_C}[Auto]${_AI_RST} '${cmd}' chưa được cài. Đang thử 'pkg install ${cmd}'..."
     local lf="${tmp_dir}/_ai_$$.log" cf="${tmp_dir}/_ai_$$.code"
     ( pkg install -y "$cmd" &>"$lf"; echo $? > "$cf" ) &
@@ -715,7 +757,6 @@ _auto_install() {
     fi
     rm -f "$lf" "$cf"
 
-    # ── Bước 2: Gemini AI ────────────────────────────────────
     echo -e "${_AI_R}[Auto]${_AI_RST} 'pkg install ${cmd}' thất bại → hỏi Gemini AI..."
     local pkg_hint="" manager_hint=""
     if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
@@ -750,7 +791,6 @@ _auto_install() {
         fi
     fi
 
-    # ── Bước 3: cài theo AI ───────────────────────────────────
     if [[ -n "$pkg_hint" ]]; then
         echo -e "${_AIA}[AI]${_AI_RST} Gợi ý: ${_AI_C}${manager_hint} install ${pkg_hint}${_AI_RST}"
         echo -ne "${_AI_Y}Cài ngay? (y/n, Enter=y): ${_AI_RST}"
@@ -781,7 +821,6 @@ _auto_install() {
         fi
     fi
 
-    # ── Bước 4: fallback pkg search ───────────────────────────
     echo -e "${_AI_Y}[Auto]${_AI_RST} Tìm trong kho Termux..."
     local alt_list
     alt_list=$(pkg search "$cmd" 2>/dev/null | grep -v "^Sorting\|^Full\|^N:\|^\s*$" | awk '{print $1}' | grep -i "$cmd" | head -5)
@@ -833,21 +872,21 @@ BASH_SMART_EOF
 # ─────────────────────────────────────────────────────────
 menu() {
     banner
-    printf "\n${left_pad}${C}[${W}01${C}]${G} Cài đặt Cần thiết"
-    printf "\n${left_pad}${C}[${W}02${C}]${G} Thiết lập Zsh"
-    printf "\n${left_pad}${C}[${W}03${C}]${G} Shell Zsh"
-    printf "\n${left_pad}${C}[${W}04${C}]${G} Shell Bash"
-    printf "\n${left_pad}${C}[${W}05${C}]${Y} Banner Zsh"
-    printf "\n${left_pad}${C}[${W}06${C}]${Y} Giao diện Zsh"
-    printf "\n${left_pad}${C}[${W}07${C}]${Y} Tô sáng / Gợi ý tự động"
-    printf "\n${left_pad}${C}[${W}08${C}]${B} Thêm Khóa Cyber ${R}(Bảo mật Cao)"
-    printf "\n${left_pad}${C}[${W}09${C}]${R} Xóa Khóa"
-    printf "\n${left_pad}${C}[${W}10${C}]${W} Cập nhật Script"
-    printf "\n${left_pad}${C}[${W}11${C}]${C} ⚡ Smart Mode ${Y}(Chạy tạm thời)"
-    printf "\n${left_pad}${C}[${W}12${C}]${G} ⚡ Cài Smart Mode vào Shell ${Y}(Vĩnh viễn)"
-    printf "\n${left_pad}${C}[${W}00${C}]${R} Thoát Terminal\n\n"
+    printf "\n%s${C}[${W}01${C}]${G} Cài đặt Cần thiết" "$left_pad"
+    printf "\n%s${C}[${W}02${C}]${G} Thiết lập Zsh" "$left_pad"
+    printf "\n%s${C}[${W}03${C}]${G} Shell Zsh" "$left_pad"
+    printf "\n%s${C}[${W}04${C}]${G} Shell Bash" "$left_pad"
+    printf "\n%s${C}[${W}05${C}]${Y} Banner Zsh" "$left_pad"
+    printf "\n%s${C}[${W}06${C}]${Y} Giao diện Zsh" "$left_pad"
+    printf "\n%s${C}[${W}07${C}]${Y} Tô sáng / Gợi ý tự động" "$left_pad"
+    printf "\n%s${C}[${W}08${C}]${B} Thêm Khóa Cyber ${R}(Bảo mật Cao)" "$left_pad"
+    printf "\n%s${C}[${W}09${C}]${R} Xóa Khóa" "$left_pad"
+    printf "\n%s${C}[${W}10${C}]${W} Cập nhật Script" "$left_pad"
+    printf "\n%s${C}[${W}11${C}]${C} ⚡ Smart Mode ${Y}(Chạy tạm thời)" "$left_pad"
+    printf "\n%s${C}[${W}12${C}]${G} ⚡ Cài Smart Mode vào Shell ${Y}(Vĩnh viễn)" "$left_pad"
+    printf "\n%s${C}[${W}00${C}]${R} Thoát Terminal\n\n" "$left_pad"
 
-    echo -ne "${left_pad}${C}Lựa chọn: ${RS}"
+    printf "%s${C}Lựa chọn: ${RS}" "$left_pad"
     read a
     case $a in
         1|01)  1line  ;;
