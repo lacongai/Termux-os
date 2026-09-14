@@ -52,68 +52,116 @@ banner() {
 1line() {
     local FLAG="$HOME/.termux-os-installed"
 
-    # ── LẦN 2+ : đã có flag → cài lại → reload → EXIT ────────
+    # ══════════════════════════════════════════════════════════
+    #  LẦN 2+ : đã có flag → cài lại đầy đủ → reload → EXIT
+    # ══════════════════════════════════════════════════════════
     if [ -f "$FLAG" ]; then
         echo -e "\n${Y}[Lần 2+] Đang cài lại các lệnh và làm mới cấu hình...${RS}\n"
+
+        # 1. Cập nhật apt
         apt update && apt upgrade -y
-        pkg install zsh git figlet toilet ruby wget curl eza -y 2>/dev/null || \
-            pkg install zsh git figlet toilet ruby wget curl -y
-        gem install lolcat --no-document 2>/dev/null || gem install lolcat 2>/dev/null
+
+        # 2. Cài gói cơ bản (bỏ exa → dùng eza)
+        pkg install zsh git figlet toilet ruby wget curl -y
+        pkg install eza -y 2>/dev/null || true
+
+        # 3. Cài lolcat đảm bảo
+        gem install lolcat --no-document 2>/dev/null || gem install lolcat 2>/dev/null || true
+
+        # 4. Clear + copy figlet font
         clear
-        cd ~/Termux-os/.object 2>/dev/null || cd ~/Termux-os
-        [ -f 'ANSI Shadow.flf' ] && [ -d "$PREFIX/share/figlet" ] && \
+        cd ~/Termux-os/.object/ && \
             cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
+
+        # 5. Cài lại toilet figlet (phòng khi thiếu)
+        pkg install toilet figlet -y 2>/dev/null || true
+
+        # 6. Vào thư mục .object + copy config Termux
+        cd ~/Termux-os/.object 2>/dev/null
         rm -rf ~/.termux/colors.properties
         rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
         mkdir -p ~/.termux
-        [ -f .colors.properties ] && cp -r .colors.properties ~/.termux/colors.properties
-        [ -f .termux.properties ] && cp -r .termux.properties ~/.termux.properties
-        termux-reload-settings 2>/dev/null || true
-        echo -e "\n${G}[✓] Đã cài lại xong. Thoát Termux...${RS}"
-        sleep 2
+        cp -r .colors.properties ~/.termux/colors.properties
+        cp -r .termux.properties ~/.termux.properties
+
+        # 7. Tải font FiraCode Nerd Font
+        curl -L --max-time 60 \
+            https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
+            > ~/.termux/font.ttf 2>/dev/null || true
+
+        # 8. Clear + về thư mục gốc tool
         clear
+        cd ~/Termux-os
+
+        # 9. Reload settings (đã bỏ termux-open-url h4ck3r.me)
+        termux-reload-settings 2>/dev/null || true
+
+        # 10. Thông báo + thoát
+        echo -e "\n${G}[✓] Đã cài lại xong.${RS}"
+        echo -e "${Y}→ Đang đưa Termux về nền...${RS}"
+        sleep 2
+        # Đưa app về nền (giống ấn Home) — không kill app
+        input keyevent KEYCODE_HOME 2>/dev/null || true
+        sleep 1
         exit 0
     fi
 
-    # ── LẦN 1 : cài đầy đủ (giống bản gốc) → tạo flag → menu ─
+    # ══════════════════════════════════════════════════════════
+    #  LẦN 1 : cài đầy đủ (giống bản gốc) → tạo flag → menu
+    # ══════════════════════════════════════════════════════════
     echo -e "\n${C}[Lần đầu] Đang cài đặt đầy đủ...${RS}\n"
 
+    # 1. Cập nhật apt
     apt update && apt upgrade -y
-    pkg install zsh git figlet toilet ruby wget curl -y
-    # FIX: exa → eza (Termux đã bỏ exa)
-    pkg install eza -y 2>/dev/null || pkg install exa -y 2>/dev/null || true
 
-    # FIX: cài lolcat đảm bảo
+    # 2. Cài gói cơ bản
+    pkg install zsh git figlet toilet ruby wget curl -y
+
+    # 3. Cài eza (thay exa)
+    pkg install eza -y 2>/dev/null || true
+
+    # 4. Cài lolcat đảm bảo
     gem install lolcat --no-document 2>/dev/null || gem install lolcat 2>/dev/null || true
 
+    # 5. Clear + copy figlet font
     clear
-    cd ~/Termux-os/.object/ && cp -r 'ANSI Shadow.flf' $PREFIX/share/figlet/ASCII-Shadow.flf 2>/dev/null
+    cd ~/Termux-os/.object/ && \
+        cp -r 'ANSI Shadow.flf' "$PREFIX/share/figlet/ASCII-Shadow.flf" 2>/dev/null
+
+    # 6. Clone Oh-My-Zsh (chỉ nếu chưa có)
     [ ! -d ~/.oh-my-zsh ] && \
         git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
 
+    # 7. Cài lại toilet figlet cho chắc
+    pkg install toilet figlet -y 2>/dev/null || true
+
+    # 8. Copy config Termux
     cd ~/Termux-os/.object 2>/dev/null
     rm -rf ~/.termux/colors.properties
     rm -rf /data/data/com.termux/files/usr/etc/motd 2>/dev/null
     mkdir -p ~/.termux
-    [ -f .colors.properties ] && cp -r .colors.properties ~/.termux/colors.properties
-    [ -f .termux.properties ] && cp -r .termux.properties ~/.termux.properties
+    cp -r .colors.properties ~/.termux/colors.properties
+    cp -r .termux.properties ~/.termux.properties
+
+    # 9. Tải font FiraCode Nerd Font
     curl -L --max-time 60 \
         https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
         > ~/.termux/font.ttf 2>/dev/null || true
 
+    # 10. Clear + về thư mục gốc tool
     clear
-    # FIX: scheme https:// + am start fallback, không dùng && treo
-    termux-open-url "https://h4ck3r.me" 2>/dev/null || \
-        am start -a android.intent.action.VIEW -d "https://h4ck3r.me" 2>/dev/null || true
+    cd ~/Termux-os
+
+    # 11. Reload settings (đã bỏ termux-open-url h4ck3r.me)
     termux-reload-settings 2>/dev/null || true
 
+    # 12. Tạo flag + quay lại menu
     touch "$FLAG"
     echo -e "\n${G}[✓] Đã cài đặt xong!${RS}"
     echo -e "${W}→ Chọn các chức năng bạn muốn ở menu dưới.${RS}"
     echo -e "${W}→ Sau khi xong, ấn ${Y}1${W} lần nữa để cài lại và thoát Termux.${RS}"
     echo ""
     sleep 4
-    cd ~/Termux-os
     menu
 }
 
