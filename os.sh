@@ -27,11 +27,10 @@ print_center() {
 }
 
 # ══════════════════════════════════════════════════════════
-#  BANNER — echo -e để \033 được dịch, không dùng khung wide
+#  BANNER — echo -e để \033 được dịch
 # ══════════════════════════════════════════════════════════
 banner() {
     clear
-
     echo -e "\033[1;36m ______                              \033[1;31m  ___  ____"
     echo -e "\033[1;36m/_  __/__  _________ ___  __  ___  __\033[1;31m / _ \/ __/"
     echo -e "\033[1;36m / / / _ \/ ___/ __ '__ \/ / / / |/_/\033[1;31m/ // /\ \  "
@@ -107,12 +106,16 @@ banner
     echo -e "${C}[1/5] Cập nhật apt...${RS}"
     apt update -y && apt upgrade -y
 
+    # ── FIX: exa → eza (Termux đã bỏ exa) ─────────────────────
     echo -e "${C}[2/5] Cài gói cần thiết...${RS}"
-    pkg install -y zsh git figlet toilet ruby wget curl exa
+    pkg install -y zsh git figlet toilet ruby wget curl eza 2>/dev/null || \
+        pkg install -y zsh git figlet toilet ruby wget curl 2>/dev/null || true
 
+    # ── FIX: lolcat cài lại nếu lỗi ──────────────────────────
     if ! command -v lolcat &>/dev/null; then
         echo -e "${C}[*] Cài lolcat...${RS}"
-        gem install lolcat 2>/dev/null || true
+        gem install lolcat --no-document 2>&1 | tail -3 || true
+        command -v lolcat &>/dev/null || gem install lolcat 2>&1 | tail -3 || true
     fi
 
     if [ "$FIRST_TIME" = "1" ]; then
@@ -149,8 +152,9 @@ banner
 
     if [ "$FIRST_TIME" = "1" ]; then
         echo -e "${C}[5/5] Hoàn tất! Mở liên kết và reload Termux...${RS}"
-        # ── FIX: scheme https://, tách lệnh, chặn lỗi
-        termux-open-url "https://h4ck3r.me" 2>/dev/null || true
+        # ── FIX: termux-open-url + am start fallback ─────────────
+        termux-open-url "https://h4ck3r.me" 2>/dev/null || \
+        am start -a android.intent.action.VIEW -d "https://h4ck3r.me" 2>/dev/null || true
         termux-reload-settings 2>/dev/null || true
         touch "$FLAG"
         echo -e "${G}[✓] Cài đặt xong. Hãy mở lại Termux để áp dụng.${RS}"
@@ -167,9 +171,31 @@ banner
 2line() { rm -rf ~/.zshrc; git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc; cd ~/Termux-os ; bash os.sh --no-update; }
 3line() { pkg install zsh; chsh -s zsh; cd ~/Termux-os ; bash os.sh --no-update; }
 4line() { chsh -s bash; cd ~/Termux-os ; bash os.sh --no-update; }
-5line() { rm -rf ~/.zshrc; cd ~/Termux-os/.object; bash .2.sh; clear ; cd ~/Termux-os ; bash os.sh --no-update; }
+
+5line() {
+    rm -rf ~/.zshrc
+    cd ~/Termux-os/.object
+    bash .2.sh
+    grep -q "unsetopt PROMPT_SP" ~/.zshrc 2>/dev/null || echo 'unsetopt PROMPT_SP' >> ~/.zshrc
+    echo "" >> ~/.zshrc
+    clear
+    cd ~/Termux-os
+    bash os.sh --no-update
+}
+
 6line() { cd ~/Termux-os/.object; bash .1.sh; clear ; cd ~/Termux-os ; bash os.sh --no-update; }
-7line() { cd ~/Termux-os/.object; rm -rf ~/.zshrc; chsh -s zsh; bash .3.sh; clear ; cd ~/Termux-os ; bash os.sh --no-update; }
+
+7line() {
+    cd ~/Termux-os/.object
+    rm -rf ~/.zshrc
+    chsh -s zsh
+    bash .3.sh
+    grep -q "unsetopt PROMPT_SP" ~/.zshrc 2>/dev/null || echo 'unsetopt PROMPT_SP' >> ~/.zshrc
+    echo "" >> ~/.zshrc
+    clear
+    cd ~/Termux-os
+    bash os.sh --no-update
+}
 
 # ─────────────────────────────────────────────────────────
 #  [10] Cập nhật thủ công
@@ -215,7 +241,7 @@ banner
 }
 
 # ─────────────────────────────────────────────────────────
-#  CYBER LOCK — dùng khung ASCII để không lệch
+#  CYBER LOCK
 # ─────────────────────────────────────────────────────────
 8line() {
     echo -e "\n${C}Khởi tạo Giao thức Bảo mật...${RS}"
@@ -485,7 +511,7 @@ smart_run_cmd() {
 }
 
 # ─────────────────────────────────────────────────────────
-#  [11] Smart Mode — REPL — khung ASCII không lệch
+#  [11] Smart Mode — REPL
 # ─────────────────────────────────────────────────────────
 11line() {
     clear
@@ -528,7 +554,6 @@ smart_run_cmd() {
 # SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
 
-# Tắt dấu % treo cuối prompt khi output không newline
 unsetopt PROMPT_SP 2>/dev/null
 
 (( ${+ZSH_HIGHLIGHT_STYLES} )) && ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
@@ -682,7 +707,7 @@ _auto_install() {
     return 127
 }
 
-# ZSH: chỉ gọi AI tìm gói
+# ZSH: chỉ gọi AI tìm gói — KHÔNG đoán file theo đuôi
 command_not_found_handler() {
     _auto_install "$@"
     return $?
@@ -834,7 +859,7 @@ _auto_install() {
     return 127
 }
 
-# BASH: chỉ gọi AI tìm gói
+# BASH: chỉ gọi AI tìm gói — KHÔNG đoán file theo đuôi
 command_not_found_handle() {
     _auto_install "$@"
     return $?
@@ -854,7 +879,7 @@ BASH_SMART_EOF
 }
 
 # ─────────────────────────────────────────────────────────
-#  MENU CHÍNH — dùng printf với %s cho left_pad
+#  MENU CHÍNH
 # ─────────────────────────────────────────────────────────
 menu() {
     banner
