@@ -57,9 +57,6 @@ ZSH_HIGHLIGHT_PATTERNS+=('*.java' 'fg=yellow,bold')
 
 # ══════════════════════════════════════════════════════════
 #  ZLE HOOK: tô màu TOÀN DÒNG theo ngữ cảnh
-#  - Path thuần (bắt đầu / hoặc ~) → VÀNG
-#  - Command hợp lệ (cd/python/pip...) → XANH LÁ
-#  - File .py/.sh/.js... tồn tại → VÀNG
 # ══════════════════════════════════════════════════════════
 autoload -Uz add-zle-hook-widget 2>/dev/null
 
@@ -92,7 +89,6 @@ _sr_full_line_color() {
         region_highlight=("0 ${#buf} fg=yellow,bold")
         return
     fi
-    # Còn lại → để zsh-syntax-highlighting tự tô
 }
 add-zle-hook-widget line-pre-redraw _sr_full_line_color 2>/dev/null
 
@@ -104,7 +100,7 @@ _smart_accept_line() {
     local trimmed="${buf#"${buf%%[! ]*}"}"
     trimmed="${trimmed%"${trimmed##*[! ]}"}"
 
-    # Nếu là path thuần → chạy cd ngầm, buffer hiện 'cd "..."' để lịch sử đẹp
+    # Nếu là path thuần → chuyển thành lệnh cd đầy đủ trong buffer
     if [[ "$trimmed" == /* || "$trimmed" == '~' || "$trimmed" == '~/'* ]]; then
         local path="${trimmed%/}"
         path="${path/#\~/$HOME}"
