@@ -43,7 +43,7 @@ banner() {
     echo -e "${W}      --[ ${G}Công Cụ Tối Ưu Termux ${W}]--       "
     echo -e ""
     echo -e "${R} [!]${W} Author  : ${C}Gấu Ngốc Nghếch (henntaiiz)"
-    echo -e "${R} [!]${W} Version : ${Y}v4 (Stable)"
+    echo -e "${R} [!]${W} Version : ${Y}v5 (Stable)"
     echo -e "${R} [!]${W} Youtube : ${W}youtube.com/henntaiiz"
     echo -e "${R} [!]${W} GitHub  : ${W}github.com/lacongai"
     echo -e ""
@@ -54,7 +54,7 @@ banner() {
 banner
 
 # ─────────────────────────────────────────────────────────
-#  HÀM MỞ URL / RELOAD AN TOÀN (fix Activity not started)
+#  HÀM MỞ URL / RELOAD AN TOÀN
 # ─────────────────────────────────────────────────────────
 safe_open_url() {
     local url="$1"
@@ -76,7 +76,7 @@ safe_reload_settings() {
 }
 
 # ─────────────────────────────────────────────────────────
-#  AUTO UPDATE (khi khởi động + watcher nền)
+#  AUTO UPDATE
 # ─────────────────────────────────────────────────────────
 REPO_DIR="$HOME/Termux-os"
 REPO_URL="https://github.com/lacongai/Termux-os"
@@ -380,10 +380,10 @@ _auto_install() {
         done
         wait "$pid" 2>/dev/null
         printf "\r\033[2K"
-        local status
-        status=$(cat "$code_file" 2>/dev/null)
+        local _ret
+        _ret=$(cat "$code_file" 2>/dev/null)
         rm -f "$log_file" "$code_file" 2>/dev/null
-        return "${status:-1}"
+        return "${_ret:-1}"
     }
 
     echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Thử 'pkg install ${cmd}'..."
@@ -459,17 +459,14 @@ _auto_install() {
     return 127
 }
 
-# ═══════════════════════════════════════════════════════════
-#  CHẠY FILE THEO EXTENSION — FIXED
-#  Dùng đường dẫn tuyệt đối để tránh lỗi khi file không có trong PATH
-# ═══════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────
+#  CHẠY FILE THEO EXTENSION (dùng absolute path)
+# ─────────────────────────────────────────────────────────
 _run_file_by_ext() {
     local filename="$1"
-    # Chuyển sang absolute path để chắc chắn chạy đúng file
     local abs_path
     abs_path=$(cd "$(dirname "$filename")" 2>/dev/null && pwd)/$(basename "$filename")
     [ -f "$abs_path" ] || abs_path="$filename"
-
     local ext="${filename##*.}"
     case "$ext" in
         py)   python "$abs_path";       return $? ;;
@@ -493,7 +490,6 @@ _run_file_by_ext() {
 smart_run_cmd() {
     local input="$*"
 
-    # Smart Path
     if [[ "$input" == /* || "$input" == "~" || "$input" == "~/"* ]]; then
         local path="${input%/}"
         path="${path/#\~/$HOME}"
@@ -505,13 +501,11 @@ smart_run_cmd() {
         return
     fi
 
-    # Smart Run: file có extension hỗ trợ
     local filename="${input%% *}"
     if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
         _run_file_by_ext "$filename" && return
     fi
 
-    # Lệnh chưa cài → auto install
     local first_word="${input%% *}"
     if ! command -v "$first_word" &>/dev/null; then
         _auto_install $input
@@ -550,12 +544,7 @@ smart_run_cmd() {
 }
 
 # ─────────────────────────────────────────────────────────
-#  [12] Cài Smart Mode vĩnh viễn — FIXED
-#  Fix:
-#   - Load zsh-syntax-highlighting + zsh-autosuggestions TRƯỚC khi gán màu
-#   - Gán màu unknown-token an toàn (chỉ khi là associative array)
-#   - Chạy file dùng absolute path
-#   - Đặt block ZSH_HIGHLIGHT_STYLES SAU khi source plugin
+#  [12] Cài Smart Mode vĩnh viễn
 # ─────────────────────────────────────────────────────────
 12line() {
     local marker="# SMART MODE (by Termux-OS)"
@@ -685,10 +674,10 @@ _auto_install() {
         done
         wait "$pid" 2>/dev/null
         printf "\r\033[2K"
-        local status
-        status=$(cat "$code_file" 2>/dev/null)
+        local _ret
+        _ret=$(cat "$code_file" 2>/dev/null)
         rm -f "$log_file" "$code_file" 2>/dev/null
-        return "${status:-1}"
+        return "${_ret:-1}"
     }
 
     echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Thử 'pkg install ${cmd}'..."
@@ -764,7 +753,7 @@ _auto_install() {
     return 127
 }
 
-# ── Chạy file theo extension (dùng absolute path) ─────────
+# ── Chạy file theo extension (absolute path) ──────────────
 _run_file_by_ext_zsh() {
     local filename="$1"
     local abs_path
@@ -790,11 +779,23 @@ _run_file_by_ext_zsh() {
     esac
 }
 
+# ── FIXED: guard để không gọi auto install khi file tồn tại ──
 command_not_found_handler() {
     local filename="$1"
+
+    # Nếu là file có extension hỗ trợ và tồn tại → chạy file, KHÔNG auto install
     if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
-        _run_file_by_ext_zsh "$filename" && return $?
+        _run_file_by_ext_zsh "$filename"
+        return $?
     fi
+
+    # Nếu tên có dấu chấm nhưng file không tồn tại → báo lỗi bình thường (không auto install)
+    if [[ "$filename" == *.* ]]; then
+        print -u2 "zsh: command not found: $filename"
+        return 127
+    fi
+
+    # Lệnh thật sự chưa cài → auto install
     _auto_install "$@"
     return $?
 }
@@ -892,10 +893,10 @@ _auto_install() {
         done
         wait "$pid" 2>/dev/null
         printf "\r\033[2K"
-        local status
-        status=$(cat "$code_file" 2>/dev/null)
+        local _ret
+        _ret=$(cat "$code_file" 2>/dev/null)
         rm -f "$log_file" "$code_file" 2>/dev/null
-        return "${status:-1}"
+        return "${_ret:-1}"
     }
 
     echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Thử 'pkg install ${cmd}'..."
@@ -996,11 +997,20 @@ _run_file_by_ext_bash() {
     esac
 }
 
+# ── FIXED: guard cho bash ─────────────────────────────────
 command_not_found_handle() {
     local filename="$1"
+
     if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
-        _run_file_by_ext_bash "$filename" && return $?
+        _run_file_by_ext_bash "$filename"
+        return $?
     fi
+
+    if [[ "$filename" == *.* ]]; then
+        echo "bash: command not found: $filename" >&2
+        return 127
+    fi
+
     _auto_install "$@"
     return $?
 }
