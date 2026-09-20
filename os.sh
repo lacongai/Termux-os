@@ -43,7 +43,7 @@ banner() {
     echo -e "${W}      --[ ${G}Công Cụ Tối Ưu Termux ${W}]--       "
     echo -e ""
     echo -e "${R} [!]${W} Author  : ${C}Gấu Ngốc Nghếch (henntaiiz)"
-    echo -e "${R} [!]${W} Version : ${Y}v3 (Stable)"
+    echo -e "${R} [!]${W} Version : ${Y}v4 (Stable)"
     echo -e "${R} [!]${W} Youtube : ${W}youtube.com/henntaiiz"
     echo -e "${R} [!]${W} GitHub  : ${W}github.com/lacongai"
     echo -e ""
@@ -60,8 +60,6 @@ safe_open_url() {
     local url="$1"
     command -v termux-open-url &>/dev/null || pkg install termux-tools -y &>/dev/null
     if command -v termux-open-url &>/dev/null; then
-        # Dùng nohup + setsid-like để tách hẳn khỏi tiến trình cha,
-        # redirect cả stdin/stdout/stderr để không làm rối chain.
         nohup termux-open-url "$url" </dev/null >/dev/null 2>&1 &
         disown 2>/dev/null || true
     fi
@@ -90,33 +88,25 @@ SKIP_UPDATE=0
 mkdir -p "$(dirname "$UPDATE_CACHE")" 2>/dev/null
 
 _do_self_update() {
-    # $1: "force" nếu muốn ép cập nhật
-    local force="${1:-}"
     [ -d "$REPO_DIR/.git" ] || return 1
     cd "$REPO_DIR" 2>/dev/null || return 1
-
     local branch
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
     [ -z "$branch" ] && return 1
-
     git fetch origin "$branch" &>/dev/null || return 1
-
     local local_c remote_c
     local_c=$(git rev-parse HEAD 2>/dev/null)
     remote_c=$(git rev-parse "origin/$branch" 2>/dev/null)
-
     if [ -n "$local_c" ] && [ -n "$remote_c" ] && [ "$local_c" != "$remote_c" ]; then
-        echo -e "${Y}[!] Phát hiện bản cập nhật mới trên GitHub! Đang tự động cập nhật...${RS}"
+        echo -e "${Y}[!] Phát hiện bản cập nhật mới! Đang tự động cập nhật...${RS}"
         if git pull --rebase origin "$branch" &>/dev/null; then
-            echo -e "${G}[✓] Cập nhật thành công! Khởi động lại tool...${RS}"
-            sleep 2
-            exec bash "$REPO_DIR/os.sh" --no-update
+            echo -e "${G}[✓] Cập nhật thành công! Khởi động lại...${RS}"
+            sleep 2; exec bash "$REPO_DIR/os.sh" --no-update
         else
             echo -e "${R}[✗] Cập nhật thất bại, ép đồng bộ...${RS}"
             git reset --hard "origin/$branch" &>/dev/null
             git pull origin "$branch" &>/dev/null
-            sleep 2
-            exec bash "$REPO_DIR/os.sh" --no-update
+            sleep 2; exec bash "$REPO_DIR/os.sh" --no-update
         fi
     fi
     return 0
@@ -125,48 +115,35 @@ _do_self_update() {
 auto_check_update() {
     [ "$SKIP_UPDATE" = "1" ] && return 0
     [ -d "$REPO_DIR/.git" ] || return 0
-
-    # Cache 10 phút
     local now last
     now=$(date +%s)
     if [ -f "$UPDATE_CACHE" ]; then
         last=$(cat "$UPDATE_CACHE" 2>/dev/null || echo 0)
-        if [ $(( now - last )) -lt 600 ]; then
-            return 0
-        fi
+        if [ $(( now - last )) -lt 600 ]; then return 0; fi
     fi
     echo "$now" > "$UPDATE_CACHE" 2>/dev/null
-
     _do_self_update
 }
 
-# Watcher nền: mỗi 5 phút check 1 lần, nếu có commit mới thì cập nhật
 start_update_watcher() {
     [ "$SKIP_UPDATE" = "1" ] && return 0
     [ -d "$REPO_DIR/.git" ] || return 0
-
-    # Tránh chạy nhiều watcher
     local pid_file="$HOME/.Termux-os/.watcher.pid"
     if [ -f "$pid_file" ]; then
-        local old_pid
-        old_pid=$(cat "$pid_file" 2>/dev/null)
-        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
-            return 0
-        fi
+        local old_pid; old_pid=$(cat "$pid_file" 2>/dev/null)
+        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then return 0; fi
     fi
-
     (
         while true; do
             sleep 300
             cd "$REPO_DIR" 2>/dev/null || exit 0
-            local branch
-            branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || continue
+            local branch; branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || continue
             git fetch origin "$branch" &>/dev/null || continue
             local lc rc
             lc=$(git rev-parse HEAD 2>/dev/null)
             rc=$(git rev-parse "origin/$branch" 2>/dev/null)
             if [ -n "$lc" ] && [ -n "$rc" ] && [ "$lc" != "$rc" ]; then
-                echo "$(date) - new commit detected, pulling..." >> "$UPDATE_LOG"
+                echo "$(date) - new commit, pulling..." >> "$UPDATE_LOG"
                 git pull --rebase origin "$branch" &>>"$UPDATE_LOG"
             fi
         done
@@ -335,12 +312,7 @@ fi
 mkdir -p "$TMPDIR" 2>/dev/null
 
 # ═══════════════════════════════════════════════════════════
-#  AI AUTO INSTALL (FIXED)
-#  - Bước 1: pkg install trực tiếp
-#  - Bước 2: pip install (nếu là python package)
-#  - Bước 3: npm install -g (nếu là node package)
-#  - Bước 4: hỏi AI -> AI trả về LỆNH CÀI ĐẶT đầy đủ (không phải tên file)
-#  - Bước 5: pkg search fallback
+#  AI AUTO INSTALL
 # ═══════════════════════════════════════════════════════════
 _ai_call_gemini() {
     local prompt="$1"
@@ -362,15 +334,12 @@ _ai_call_gemini() {
     printf '%s' "$result"
 }
 
-# Hỏi AI cách cài đặt lệnh (trả về chuỗi lệnh cài đặt, không phải tên file)
 _ai_get_install_cmd() {
     local cmd="$1"
     local prompt="You are a Termux package installation expert. The user typed the command '${cmd}' but it is not installed. Determine the correct FULL installation command to install this tool on Termux (Android). Prefer Termux native 'pkg install' if the tool exists in the Termux repo. Otherwise use 'pip install' for Python tools or 'npm install -g' for Node.js tools. Reply with ONLY the raw installation command, one line, no explanation, no markdown, no quotes. Examples: 'pkg install neofetch', 'pip install requests', 'npm install -g typescript'. If you don't know, reply 'unknown'."
     local resp
     resp=$(_ai_call_gemini "$prompt" | tr -d '\r' | head -c 200)
-    # Lọc sạch: chỉ giữ dòng đầu
     resp=$(printf '%s' "$resp" | head -1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    # Validate: chỉ cho phép các prefix cài đặt hợp lệ
     case "$resp" in
         "pkg install "*|"pip install "*|"pip3 install "*|"python -m pip install "*|"npm install -g "*|"apt install "*)
             printf '%s' "$resp"
@@ -396,7 +365,6 @@ _auto_install() {
         return 127
     fi
 
-    # ── Helper: chạy 1 lệnh cài có spinner ──────────────────
     _run_install_cmd() {
         local install_cmd="$1"
         local label="$2"
@@ -418,7 +386,6 @@ _auto_install() {
         return "${status:-1}"
     }
 
-    # ── Bước 1: pkg install trực tiếp ────────────────────────
     echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Thử 'pkg install ${cmd}'..."
     if _run_install_cmd "pkg install -y ${cmd}" "Đang cài '${_AI_W}${cmd}${_AI_RST}' qua pkg..." \
         && command -v "$cmd" &>/dev/null; then
@@ -426,7 +393,6 @@ _auto_install() {
         "$cmd" "${args[@]}"; return $?
     fi
 
-    # ── Bước 2: pip install ──────────────────────────────────
     if command -v pip &>/dev/null; then
         echo -e "${_AI_C}[Auto Install]${_AI_RST} Thử 'pip install ${cmd}'..."
         if _run_install_cmd "pip install ${cmd}" "Đang cài '${_AI_W}${cmd}${_AI_RST}' qua pip..." \
@@ -436,7 +402,6 @@ _auto_install() {
         fi
     fi
 
-    # ── Bước 3: npm install -g ───────────────────────────────
     if command -v npm &>/dev/null; then
         echo -e "${_AI_C}[Auto Install]${_AI_RST} Thử 'npm install -g ${cmd}'..."
         if _run_install_cmd "npm install -g ${cmd}" "Đang cài '${_AI_W}${cmd}${_AI_RST}' qua npm..." \
@@ -446,22 +411,9 @@ _auto_install() {
         fi
     fi
 
-    # ── Bước 4: Hỏi Gemini AI để lấy LỆNH CÀI ĐẶT ───────────
     echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Các cách trên thất bại. Hỏi Gemini tra cứu lệnh cài..."
     local ai_cmd=""
-    (
-        printf ""
-    ) &
-    local ai_pid=$!
-    local spin_ai=0
-    while kill -0 "$ai_pid" 2>/dev/null; do
-        printf "\r${_AIA}[Auto Install AI]${_AI_RST} ${_AI_Y}${frames[$spin_ai]}${_AI_RST} Đang hỏi Gemini..."
-        spin_ai=$(( (spin_ai + 1) % 10 ))
-        sleep 0.1
-    done
-    wait "$ai_pid" 2>/dev/null
     ai_cmd=$(_ai_get_install_cmd "$cmd")
-    printf "\r\033[2K"
 
     if [ -n "$ai_cmd" ]; then
         echo -e "${_AIA}[Auto Install AI]${_AI_RST} Gemini gợi ý lệnh: ${_AI_C}${ai_cmd}${_AI_RST}"
@@ -475,7 +427,6 @@ _auto_install() {
         echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ AI không trả về lệnh hợp lệ. Chuyển sang tìm gói..."
     fi
 
-    # ── Bước 5: pkg search fallback ──────────────────────────
     echo ""
     echo -e "${_AI_Y}[Auto Install]${_AI_RST} Đang tìm gói trong kho Termux..."
     local alt_list
@@ -508,25 +459,33 @@ _auto_install() {
     return 127
 }
 
-# ── Chạy file theo extension ─────────────────────────────
+# ═══════════════════════════════════════════════════════════
+#  CHẠY FILE THEO EXTENSION — FIXED
+#  Dùng đường dẫn tuyệt đối để tránh lỗi khi file không có trong PATH
+# ═══════════════════════════════════════════════════════════
 _run_file_by_ext() {
     local filename="$1"
+    # Chuyển sang absolute path để chắc chắn chạy đúng file
+    local abs_path
+    abs_path=$(cd "$(dirname "$filename")" 2>/dev/null && pwd)/$(basename "$filename")
+    [ -f "$abs_path" ] || abs_path="$filename"
+
     local ext="${filename##*.}"
     case "$ext" in
-        py)   python "$filename";       return $? ;;
-        sh)   bash "$filename";         return $? ;;
-        js)   node "$filename";         return $? ;;
-        ts)   npx ts-node "$filename";  return $? ;;
-        php)  php "$filename";          return $? ;;
-        rb)   ruby "$filename";         return $? ;;
-        lua)  lua "$filename";          return $? ;;
-        pl)   perl "$filename";         return $? ;;
-        go)   go run "$filename";       return $? ;;
-        r|R)  Rscript "$filename";      return $? ;;
-        java) local cls="${filename%.java}"; javac "$filename" && java "$cls"; return $? ;;
-        c)    local out="${filename%.c}"; gcc "$filename" -o "$out" && "./$out"; return $? ;;
-        cpp)  local out="${filename%.cpp}"; g++ "$filename" -o "$out" && "./$out"; return $? ;;
-        rs)   local out="${filename%.rs}"; rustc "$filename" && "./$out"; return $? ;;
+        py)   python "$abs_path";       return $? ;;
+        sh)   bash "$abs_path";         return $? ;;
+        js)   node "$abs_path";         return $? ;;
+        ts)   npx ts-node "$abs_path";  return $? ;;
+        php)  php "$abs_path";          return $? ;;
+        rb)   ruby "$abs_path";         return $? ;;
+        lua)  lua "$abs_path";          return $? ;;
+        pl)   perl "$abs_path";         return $? ;;
+        go)   go run "$abs_path";       return $? ;;
+        r|R)  Rscript "$abs_path";      return $? ;;
+        java) local cls="${abs_path%.java}"; javac "$abs_path" && java "$cls"; return $? ;;
+        c)    local out="${abs_path%.c}"; gcc "$abs_path" -o "$out" && "$out"; return $? ;;
+        cpp)  local out="${abs_path%.cpp}"; g++ "$abs_path" -o "$out" && "$out"; return $? ;;
+        rs)   local out="${abs_path%.rs}"; rustc "$abs_path" && "$out"; return $? ;;
         *)    return 1 ;;
     esac
 }
@@ -591,23 +550,47 @@ smart_run_cmd() {
 }
 
 # ─────────────────────────────────────────────────────────
-#  [12] Cài Smart Mode vĩnh viễn
+#  [12] Cài Smart Mode vĩnh viễn — FIXED
+#  Fix:
+#   - Load zsh-syntax-highlighting + zsh-autosuggestions TRƯỚC khi gán màu
+#   - Gán màu unknown-token an toàn (chỉ khi là associative array)
+#   - Chạy file dùng absolute path
+#   - Đặt block ZSH_HIGHLIGHT_STYLES SAU khi source plugin
 # ─────────────────────────────────────────────────────────
 12line() {
     local marker="# SMART MODE (by Termux-OS)"
 
+    # ═══════════════════════════════════════════════════════
+    #  ZSH BLOCK
+    # ═══════════════════════════════════════════════════════
     if [ -f ~/.zshrc ]; then
         if grep -q "$marker" ~/.zshrc 2>/dev/null; then
-            echo -e "${Y}[!] Smart Mode đã có trong ~/.zshrc${RS}"
-        else
-            cat >> ~/.zshrc << 'ZSH_SMART_EOF'
+            echo -e "${Y}[!] Smart Mode đã có trong ~/.zshrc — đang gỡ và cài lại...${RS}"
+            sed -i '/# SMART MODE (by Termux-OS)/,/END SMART MODE/d' ~/.zshrc
+        fi
+
+        cat >> ~/.zshrc << 'ZSH_SMART_EOF'
 
 # ══════════════════════════════════════════════════════════
 # SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
 
+# ── Load plugin highlight + autosuggest (nếu chưa có) ─────
+if [ -f "$HOME/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
+    source "$HOME/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+fi
+if [ -f "$HOME/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]; then
+    source "$HOME/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+fi
+
+# ── Màu unknown-token (chỉ gán khi là associative array) ──
 if (( ${+ZSH_HIGHLIGHT_STYLES} )) && [[ "${(t)ZSH_HIGHLIGHT_STYLES}" == *association* ]]; then
     ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+    ZSH_HIGHLIGHT_STYLES[path]='fg=cyan'
+    ZSH_HIGHLIGHT_STYLES[command]='fg=green,bold'
+    ZSH_HIGHLIGHT_STYLES[builtin]='fg=green,bold'
+    ZSH_HIGHLIGHT_STYLES[alias]='fg=green,bold'
+    ZSH_HIGHLIGHT_STYLES[function]='fg=green,bold'
 fi
 
 _SR_ERR='\033[1;31m'
@@ -638,6 +621,7 @@ _ai_call_gemini() {
     local prompt="$1"
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local tmp_dir="${TMPDIR:-$PREFIX/tmp}"
+    mkdir -p "$tmp_dir" 2>/dev/null
     local out="${tmp_dir}/_gem_$$.json"
     curl -sf --max-time 25 \
         -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
@@ -780,24 +764,28 @@ _auto_install() {
     return 127
 }
 
+# ── Chạy file theo extension (dùng absolute path) ─────────
 _run_file_by_ext_zsh() {
     local filename="$1"
+    local abs_path
+    abs_path=$(cd "$(dirname "$filename")" 2>/dev/null && pwd)/$(basename "$filename")
+    [ -f "$abs_path" ] || abs_path="$filename"
     local ext="${filename##*.}"
     case "$ext" in
-        py)   python "$filename";       return $? ;;
-        sh)   bash "$filename";         return $? ;;
-        js)   node "$filename";         return $? ;;
-        ts)   npx ts-node "$filename";  return $? ;;
-        php)  php "$filename";          return $? ;;
-        rb)   ruby "$filename";         return $? ;;
-        lua)  lua "$filename";          return $? ;;
-        pl)   perl "$filename";         return $? ;;
-        go)   go run "$filename";       return $? ;;
-        r|R)  Rscript "$filename";      return $? ;;
-        java) local cls="${filename%.java}"; javac "$filename" && java "$cls"; return $? ;;
-        c)    local out="${filename%.c}"; gcc "$filename" -o "$out" && "./$out"; return $? ;;
-        cpp)  local out="${filename%.cpp}"; g++ "$filename" -o "$out" && "./$out"; return $? ;;
-        rs)   local out="${filename%.rs}"; rustc "$filename" && "./$out"; return $? ;;
+        py)   python "$abs_path";       return $? ;;
+        sh)   bash "$abs_path";         return $? ;;
+        js)   node "$abs_path";         return $? ;;
+        ts)   npx ts-node "$abs_path";  return $? ;;
+        php)  php "$abs_path";          return $? ;;
+        rb)   ruby "$abs_path";         return $? ;;
+        lua)  lua "$abs_path";          return $? ;;
+        pl)   perl "$abs_path";         return $? ;;
+        go)   go run "$abs_path";       return $? ;;
+        r|R)  Rscript "$abs_path";      return $? ;;
+        java) local cls="${abs_path%.java}"; javac "$abs_path" && java "$cls"; return $? ;;
+        c)    local out="${abs_path%.c}"; gcc "$abs_path" -o "$out" && "$out"; return $? ;;
+        cpp)  local out="${abs_path%.cpp}"; g++ "$abs_path" -o "$out" && "$out"; return $? ;;
+        rs)   local out="${abs_path%.rs}"; rustc "$abs_path" && "$out"; return $? ;;
         *)    return 1 ;;
     esac
 }
@@ -814,17 +802,21 @@ command_not_found_handler() {
 # END SMART MODE
 # ══════════════════════════════════════════════════════════
 ZSH_SMART_EOF
-            echo -e "${G}[✓] Đã cài Smart Mode vào ~/.zshrc${RS}"
-        fi
+        echo -e "${G}[✓] Đã cài Smart Mode vào ~/.zshrc${RS}"
     else
         echo -e "${Y}[!] Không tìm thấy ~/.zshrc${RS}"
     fi
 
+    # ═══════════════════════════════════════════════════════
+    #  BASH BLOCK
+    # ═══════════════════════════════════════════════════════
     if [ -f ~/.bashrc ]; then
         if grep -q "$marker" ~/.bashrc 2>/dev/null; then
-            echo -e "${Y}[!] Smart Mode đã có trong ~/.bashrc${RS}"
-        else
-            cat >> ~/.bashrc << 'BASH_SMART_EOF'
+            echo -e "${Y}[!] Smart Mode đã có trong ~/.bashrc — đang gỡ và cài lại...${RS}"
+            sed -i '/# SMART MODE (by Termux-OS)/,/END SMART MODE/d' ~/.bashrc
+        fi
+
+        cat >> ~/.bashrc << 'BASH_SMART_EOF'
 
 # ══════════════════════════════════════════════════════════
 # SMART MODE (by Termux-OS)
@@ -837,6 +829,7 @@ _ai_call_gemini() {
     local prompt="$1"
     local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
     local tmp_dir="${TMPDIR:-$PREFIX/tmp}"
+    mkdir -p "$tmp_dir" 2>/dev/null
     local out="${tmp_dir}/_gem_$$.json"
     curl -sf --max-time 25 \
         -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
@@ -980,22 +973,25 @@ _auto_install() {
 
 _run_file_by_ext_bash() {
     local filename="$1"
+    local abs_path
+    abs_path=$(cd "$(dirname "$filename")" 2>/dev/null && pwd)/$(basename "$filename")
+    [ -f "$abs_path" ] || abs_path="$filename"
     local ext="${filename##*.}"
     case "$ext" in
-        py)   python "$filename";       return $? ;;
-        sh)   bash "$filename";         return $? ;;
-        js)   node "$filename";         return $? ;;
-        ts)   npx ts-node "$filename";  return $? ;;
-        php)  php "$filename";          return $? ;;
-        rb)   ruby "$filename";         return $? ;;
-        lua)  lua "$filename";          return $? ;;
-        pl)   perl "$filename";         return $? ;;
-        go)   go run "$filename";       return $? ;;
-        r|R)  Rscript "$filename";      return $? ;;
-        java) local cls="${filename%.java}"; javac "$filename" && java "$cls"; return $? ;;
-        c)    local out="${filename%.c}"; gcc "$filename" -o "$out" && "./$out"; return $? ;;
-        cpp)  local out="${filename%.cpp}"; g++ "$filename" -o "$out" && "./$out"; return $? ;;
-        rs)   local out="${filename%.rs}"; rustc "$filename" && "./$out"; return $? ;;
+        py)   python "$abs_path";       return $? ;;
+        sh)   bash "$abs_path";         return $? ;;
+        js)   node "$abs_path";         return $? ;;
+        ts)   npx ts-node "$abs_path";  return $? ;;
+        php)  php "$abs_path";          return $? ;;
+        rb)   ruby "$abs_path";         return $? ;;
+        lua)  lua "$abs_path";          return $? ;;
+        pl)   perl "$abs_path";         return $? ;;
+        go)   go run "$abs_path";       return $? ;;
+        r|R)  Rscript "$abs_path";      return $? ;;
+        java) local cls="${abs_path%.java}"; javac "$abs_path" && java "$cls"; return $? ;;
+        c)    local out="${abs_path%.c}"; gcc "$abs_path" -o "$out" && "$out"; return $? ;;
+        cpp)  local out="${abs_path%.cpp}"; g++ "$abs_path" -o "$out" && "$out"; return $? ;;
+        rs)   local out="${abs_path%.rs}"; rustc "$abs_path" && "$out"; return $? ;;
         *)    return 1 ;;
     esac
 }
@@ -1012,8 +1008,7 @@ command_not_found_handle() {
 # END SMART MODE
 # ══════════════════════════════════════════════════════════
 BASH_SMART_EOF
-            echo -e "${G}[✓] Đã cài Smart Mode vào ~/.bashrc${RS}"
-        fi
+        echo -e "${G}[✓] Đã cài Smart Mode vào ~/.bashrc${RS}"
     fi
 
     echo -e "${C}\nSmart Mode sẽ hoạt động tự động từ lần mở shell tiếp theo.${RS}"
