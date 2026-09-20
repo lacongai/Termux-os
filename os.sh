@@ -606,7 +606,9 @@ smart_run_cmd() {
 # SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
 
-(( ${+ZSH_HIGHLIGHT_STYLES} )) && ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+if (( ${+ZSH_HIGHLIGHT_STYLES} )) && [[ "${(t)ZSH_HIGHLIGHT_STYLES}" == *association* ]]; then
+    ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+fi
 
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
