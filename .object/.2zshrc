@@ -1,15 +1,25 @@
+# ══════════════════════════════════════════════════════════
+#  TERMUX-OS v2 — ~/.zshrc
+# ══════════════════════════════════════════════════════════
 
+# ── Oh My Zsh ─────────────────────────────────────────────
+export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME="henntaiiz"
-export ZSH=$HOME/.oh-my-zsh
 plugins=(git)
+source "$HOME/.oh-my-zsh/oh-my-zsh.sh"
 
-source $HOME/.oh-my-zsh/oh-my-zsh.sh
-[[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-[[ -f /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source /data/data/com.termux/files/home/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+# ── Plugins bổ trợ (autosuggest + syntax-highlighting) ────
+_ZSHA="$HOME/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+_ZSHH="$HOME/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+[[ -f "$_ZSHA" ]] && source "$_ZSHA"
+[[ -f "$_ZSHH" ]] && source "$_ZSHH"
 
-# app.py, run.sh, index.js ... hiện màu vàng trên prompt (unknown-token)
-ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+# ── Màu unknown-token (an toàn: chỉ gán khi là assoc array) ─
+if (( ${+ZSH_HIGHLIGHT_STYLES} )) && [[ "${(t)ZSH_HIGHLIGHT_STYLES}" == *association* ]]; then
+    ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
+fi
 
+# ── Khởi động Termux-OS ───────────────────────────────────
 clear
 echo -e "\033[1;32m[*] ĐANG KHỞI ĐỘNG TERMUX-OS v2..."
 echo -ne "\033[1;36m[ĐANG TẢI CÁC MÔ-ĐUN] \033[1;32m"
@@ -21,7 +31,9 @@ echo -e "\033[0m"
 sleep 0.4
 clear
 
-
+# ══════════════════════════════════════════════════════════
+#  BANNER
+# ══════════════════════════════════════════════════════════
 draw_banner() {
     local BOX_WIDTH=56
     local cyan='\033[0;36m'
@@ -31,7 +43,8 @@ draw_banner() {
         local text="$1"
         local len=${#text}
         local space_len=$(( (BOX_WIDTH - 2 - len) / 2 ))
-        printf "${cyan} ║%*s${reset}%s${cyan}%*s║${reset}\n" $space_len "" "$text" $(( BOX_WIDTH - 2 - len - space_len )) ""
+        printf "${cyan} ║%*s${reset}%s${cyan}%*s║${reset}\n" \
+            $space_len "" "$text" $(( BOX_WIDTH - 2 - len - space_len )) ""
     }
 
     draw_line() {
@@ -44,7 +57,13 @@ draw_banner() {
 
     draw_line "╔" "╗"
     print_center ""
-    figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" | lolcat
+    if command -v figlet &>/dev/null && command -v lolcat &>/dev/null; then
+        figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" 2>/dev/null | lolcat
+    elif command -v figlet &>/dev/null; then
+        figlet -c -f ASCII-Shadow -w $BOX_WIDTH "\PROC" 2>/dev/null
+    else
+        print_center ">>> T E R M U X - O S <<<"
+    fi
     print_center ""
     print_center "HỆ THỐNG: TRỰC TUYẾN  |  NGƯỜI DÙNG: ROOT"
     print_center "OS : Termux-OS v2"
@@ -57,16 +76,15 @@ draw_banner
 
 # ══════════════════════════════════════════════════════════
 #  SMART MODE (by Termux-OS)
-#  Smart Path : dán đường dẫn (có/không có khoảng cách) → tự cd
-#  Smart Run  : nhập tên file.đuôi → tự chạy đúng lệnh
-#  Auto Install: lệnh chưa cài → tự hỏi cài qua pkg
-#  Lệnh thường: giữ nguyên hoàn toàn
+#   Smart Path  : dán đường dẫn → tự cd
+#   Smart Run   : nhập file.đuôi → tự chạy đúng lệnh
+#   Auto Install: lệnh chưa cài → hỏi AI + cài pkg/pip/npm
 # ══════════════════════════════════════════════════════════
 
 _SR_ERR='\033[1;31m'
 _SR_RST='\033[0m'
 
-# ── ZLE accept-line: bắt raw buffer TRƯỚC khi zsh word-split ──
+# ── ZLE accept-line: bắt raw buffer TRƯỚC khi zsh word-split ─
 _smart_accept_line() {
     local buf="$BUFFER"
     local trimmed="${buf#"${buf%%[! ]*}"}"
@@ -90,151 +108,207 @@ _smart_accept_line() {
 }
 zle -N accept-line _smart_accept_line
 
+# ── Helper: gọi Gemini AI ─────────────────────────────────
+_ai_call_gemini() {
+    local prompt="$1"
+    local GEMINI_API_KEY="AIzaSyBOaPceEXRzZNMeYF3uXt3yRriv-OiVS2U"
+    local tmp_dir="${TMPDIR:-$PREFIX/tmp}"
+    mkdir -p "$tmp_dir" 2>/dev/null
+    local out="${tmp_dir}/_gem_$$.json"
+    curl -sf --max-time 25 \
+        -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
+        -H "Content-Type: application/json" \
+        -d "{\"contents\":[{\"parts\":[{\"text\":\"${prompt}\"}]}]}" \
+        > "$out" 2>/dev/null
+    local result=""
+    if [[ -f "$out" ]]; then
+        result=$(grep -o '"text":"[^"]*"' "$out" 2>/dev/null | head -1 \
+            | sed 's/"text":"//;s/".*//' \
+            | sed 's/\\n/ /g; s/\\"/"/g; s/\\\\/\\/g')
+        rm -f "$out" 2>/dev/null
+    fi
+    printf '%s' "$result"
+}
+
+# ── Hỏi AI: trả về LỆNH CÀI ĐẶT đầy đủ ────────────────────
+_ai_get_install_cmd() {
+    local cmd="$1"
+    local prompt="You are a Termux package installation expert. The user typed '${cmd}' but it is not installed. Determine the correct FULL installation command to install this tool on Termux (Android). Prefer 'pkg install' if the tool exists in the Termux repo. Otherwise use 'pip install' for Python tools or 'npm install -g' for Node.js tools. Reply with ONLY the raw installation command, one line, no explanation, no markdown, no quotes. Examples: 'pkg install neofetch', 'pip install requests', 'npm install -g typescript'. If unsure, reply 'unknown'."
+    local resp
+    resp=$(_ai_call_gemini "$prompt" | tr -d '\r' | head -c 200)
+    resp=$(printf '%s' "$resp" | head -1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    case "$resp" in
+        "pkg install "*|"pip install "*|"pip3 install "*|"python -m pip install "*|"npm install -g "*|"apt install "*)
+            printf '%s' "$resp"
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 # ── Auto Install ──────────────────────────────────────────
 _auto_install() {
-    local cmd="$1"; shift; local args=("$@")
-    local GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
+    local cmd="$1"; shift
+    local args=("$@")
     local _AI_C='\033[1;96m' _AI_Y='\033[1;93m' _AI_G='\033[1;32m'
     local _AI_R='\033[1;31m' _AI_W='\033[1;97m' _AIA='\033[1;95m' _AI_RST='\033[0m'
     local -a frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
     setopt LOCAL_OPTIONS; unsetopt NOTIFY
-    if ! command -v pkg &>/dev/null; then echo "command not found: $cmd"; return 127; fi
+
+    local tmp_dir="${TMPDIR:-$PREFIX/tmp}"
+    mkdir -p "$tmp_dir" 2>/dev/null
+
+    if ! command -v pkg &>/dev/null; then
+        echo "command not found: $cmd"
+        return 127
+    fi
+
+    # Helper chạy lệnh cài có spinner
+    _run_install_cmd() {
+        local install_cmd="$1"
+        local label="$2"
+        local log_file="${tmp_dir}/_ai_$$.log"
+        local code_file="${tmp_dir}/_ai_$$.code"
+        ( eval "$install_cmd" &>"$log_file"; echo $? > "$code_file" ) &
+        local pid=$!
+        local i=1
+        while kill -0 "$pid" 2>/dev/null; do
+            printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$i]}${_AI_RST} %s" "$label"
+            i=$(( i % 10 + 1 ))
+            sleep 0.1
+        done
+        wait "$pid" 2>/dev/null
+        printf "\r\033[2K"
+        local status
+        status=$(cat "$code_file" 2>/dev/null)
+        rm -f "$log_file" "$code_file" 2>/dev/null
+        return "${status:-1}"
+    }
 
     # ── Bước 1: pkg install trực tiếp ────────────────────────
-    echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Đang thử cài..."
-    local log_file="/tmp/_ai_$.log" code_file="/tmp/_ai_exit_$.code"
-    ( pkg install -y "$cmd" &>"$log_file"; echo $? > "$code_file" ) &
-    local pkg_pid=$!; local spin_i=1
-    while kill -0 "$pkg_pid" 2>/dev/null; do
-        printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$spin_i]}${_AI_RST} Đang cài '${_AI_W}${cmd}${_AI_RST}'..."
-        spin_i=$(( spin_i % 10 + 1 )); sleep 0.1
-    done
-    wait "$pkg_pid" 2>/dev/null; printf "\r\033[2K"
-    local install_status; install_status=$(cat "$code_file" 2>/dev/null)
-    rm -f "$log_file" "$code_file"
-    if [[ "$install_status" == "0" ]] && command -v "$cmd" &>/dev/null; then
-        echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${cmd}${_AI_RST}'"
+    echo -e "${_AI_C}[Auto Install]${_AI_RST} '${cmd}' chưa được cài. Thử 'pkg install ${cmd}'..."
+    if _run_install_cmd "pkg install -y ${cmd}" \
+        "Đang cài '${_AI_W}${cmd}${_AI_RST}' qua pkg..." \
+        && command -v "$cmd" &>/dev/null; then
+        echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài '${_AI_Y}${cmd}${_AI_RST}'"
         "$cmd" "${args[@]}"; return $?
     fi
 
-    # ── Bước 2: Gemini AI (ưu tiên trước pkg search) ─────────
-    echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Không cài được '${cmd}'. Đang hỏi Gemini AI..."
-    local ai_pkg=""
-    if [[ -n "$GEMINI_API_KEY" && "$GEMINI_API_KEY" != "YOUR_GEMINI_API_KEY_HERE" ]]; then
-        local ai_out="/tmp/_ai_g_$.json"
-        (
-            curl -sf --max-time 20 \
-              -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
-              -H "Content-Type: application/json" \
-              -d "{\"contents\":[{\"parts\":[{\"text\":\"What is the exact Termux pkg package name for the command: ${cmd}? Reply with ONLY the package name, one word.\"}]}]}" \
-              > "$ai_out" 2>/dev/null || echo '{"error":"timeout"}' > "$ai_out"
-        ) &
-        local ai_pid=$!; local spin_ai=1
-        while kill -0 "$ai_pid" 2>/dev/null; do
-            printf "\r${_AIA}[Auto Install AI]${_AI_RST} ${_AI_Y}${frames[$spin_ai]}${_AI_RST} Đang hỏi Gemini..."
-            spin_ai=$(( spin_ai % 10 + 1 )); sleep 0.1
-        done
-        wait "$ai_pid" 2>/dev/null; printf "\r\033[2K"
-        ai_pkg=$(grep -o '"text":"[^"]*"' "$ai_out" 2>/dev/null | head -1 \
-            | sed 's/"text":"//;s/".*//' | tr -d '[:space:]`*#\n')
-        rm -f "$ai_out"
-        if [[ -n "$ai_pkg" && "$ai_pkg" =~ ^[a-zA-Z0-9][a-zA-Z0-9_+.-]*$ ]]; then
-            echo -e "${_AIA}[Auto Install AI]${_AI_RST} Gemini gợi ý: ${_AI_C}${ai_pkg}${_AI_RST}"
-            local log_ai="/tmp/_ai_gi_$.log" code_ai="/tmp/_ai_gi_exit_$.code"
-            ( pkg install -y "$ai_pkg" &>"$log_ai"; echo $? > "$code_ai" ) &
-            local ai_pkg_pid=$!; local spin_ai2=1
-            while kill -0 "$ai_pkg_pid" 2>/dev/null; do
-                printf "\r${_AIA}[Auto Install AI]${_AI_RST} ${_AI_Y}${frames[$spin_ai2]}${_AI_RST} Đang cài '${_AI_W}${ai_pkg}${_AI_RST}'..."
-                spin_ai2=$(( spin_ai2 % 10 + 1 )); sleep 0.1
-            done
-            wait "$ai_pkg_pid" 2>/dev/null; printf "\r\033[2K"; rm -f "$log_ai" "$code_ai"
-            if command -v "$cmd" &>/dev/null; then
-                echo -e "${_AI_G}[Auto Install AI]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${ai_pkg}${_AI_RST}'"
-                "$cmd" "${args[@]}"; return $?
-            fi
-            echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ Không thể cài '${ai_pkg}'. Chuyển sang tìm gói..."
-        else
-            echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ Không lấy được gợi ý từ AI. Chuyển sang tìm gói..."
+    # ── Bước 2: pip install ──────────────────────────────────
+    if command -v pip &>/dev/null; then
+        echo -e "${_AI_C}[Auto Install]${_AI_RST} Thử 'pip install ${cmd}'..."
+        if _run_install_cmd "pip install ${cmd}" \
+            "Đang cài '${_AI_W}${cmd}${_AI_RST}' qua pip..." \
+            && command -v "$cmd" &>/dev/null; then
+            echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài '${_AI_Y}${cmd}${_AI_RST}' qua pip"
+            "$cmd" "${args[@]}"; return $?
         fi
-    else
-        echo -e "${_AI_Y}[Auto Install AI]${_AI_RST} ⚠ Chưa cấu hình GEMINI_API_KEY — bỏ qua AI."
     fi
 
-    # ── Bước 3: pkg search ────────────────────────────────────
+    # ── Bước 3: npm install -g ───────────────────────────────
+    if command -v npm &>/dev/null; then
+        echo -e "${_AI_C}[Auto Install]${_AI_RST} Thử 'npm install -g ${cmd}'..."
+        if _run_install_cmd "npm install -g ${cmd}" \
+            "Đang cài '${_AI_W}${cmd}${_AI_RST}' qua npm..." \
+            && command -v "$cmd" &>/dev/null; then
+            echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài '${_AI_Y}${cmd}${_AI_RST}' qua npm"
+            "$cmd" "${args[@]}"; return $?
+        fi
+    fi
+
+    # ── Bước 4: Hỏi Gemini AI lấy lệnh cài ───────────────────
+    echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Các cách trên thất bại. Hỏi Gemini tra cứu lệnh cài..."
+    local ai_cmd=""
+    ai_cmd=$(_ai_get_install_cmd "$cmd")
+
+    if [[ -n "$ai_cmd" ]]; then
+        echo -e "${_AIA}[Auto Install AI]${_AI_RST} Gemini gợi ý: ${_AI_C}${ai_cmd}${_AI_RST}"
+        if _run_install_cmd "$ai_cmd" \
+            "Đang chạy: ${_AI_W}${ai_cmd}${_AI_RST}..." \
+            && command -v "$cmd" &>/dev/null; then
+            echo -e "${_AI_G}[Auto Install AI]${_AI_RST} ✓ Đã cài '${_AI_Y}${cmd}${_AI_RST}' theo AI"
+            "$cmd" "${args[@]}"; return $?
+        fi
+        echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ Lệnh AI không chạy được '${cmd}'. Chuyển sang tìm gói..."
+    else
+        echo -e "${_AI_R}[Auto Install AI]${_AI_RST} ✗ AI không trả về lệnh hợp lệ. Chuyển sang tìm gói..."
+    fi
+
+    # ── Bước 5: pkg search fallback ──────────────────────────
     echo ""
     echo -e "${_AI_Y}[Auto Install]${_AI_RST} Đang tìm gói trong kho Termux..."
     local alt_list
-    alt_list=$(pkg search "$cmd" 2>/dev/null | grep -v "^Sorting\|^Full\|^N:\|^\s*$" | awk '{print $1}' | grep -i "$cmd" | head -5)
+    alt_list=$(pkg search "$cmd" 2>/dev/null \
+        | grep -v "^Sorting\|^Full\|^N:\|^\s*$" \
+        | awk '{print $1}' | grep -i "$cmd" | head -5)
     if [[ -n "$alt_list" ]]; then
         echo -e "${_AI_Y}[Auto Install]${_AI_RST} Tìm thấy các gói liên quan:"
         local idx=1
         while IFS= read -r pkg_name; do
-            echo -e "  ${_AI_C}[${idx}]${_AI_RST} ${pkg_name}"; idx=$(( idx + 1 ))
+            echo -e "  ${_AI_C}[${idx}]${_AI_RST} ${pkg_name}"
+            idx=$(( idx + 1 ))
         done <<< "$alt_list"
         echo ""
         echo -ne "${_AI_Y}Chọn số để cài (Enter = bỏ qua): ${_AI_RST}"
         read -r choice
         if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 ]]; then
-            local selected; selected=$(echo "$alt_list" | sed -n "${choice}p")
+            local selected
+            selected=$(echo "$alt_list" | sed -n "${choice}p")
             if [[ -n "$selected" ]]; then
-                local log2="/tmp/_ai_s_$.log" code2="/tmp/_ai_s_exit_$.code"
-                ( pkg install -y "$selected" &>"$log2"; echo $? > "$code2" ) &
-                local pkg2_pid=$!; local spin2_i=1
-                while kill -0 "$pkg2_pid" 2>/dev/null; do
-                    printf "\r${_AI_C}[Auto Install]${_AI_RST} ${_AI_Y}${frames[$spin2_i]}${_AI_RST} Đang cài '${_AI_W}${selected}${_AI_RST}'..."
-                    spin2_i=$(( spin2_i % 10 + 1 )); sleep 0.1
-                done
-                wait "$pkg2_pid" 2>/dev/null; printf "\r\033[2K"; rm -f "$log2" "$code2"
-                if command -v "$cmd" &>/dev/null; then
-                    echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài thành công '${_AI_Y}${selected}${_AI_RST}'"
+                if _run_install_cmd "pkg install -y ${selected}" \
+                    "Đang cài '${_AI_W}${selected}${_AI_RST}'..." \
+                    && command -v "$cmd" &>/dev/null; then
+                    echo -e "${_AI_G}[Auto Install]${_AI_RST} ✓ Đã cài '${_AI_Y}${selected}${_AI_RST}'"
                     "$cmd" "${args[@]}"; return $?
                 fi
-                echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Vẫn không thể chạy '${cmd}' sau khi cài '${selected}'"
+                echo -e "${_AI_R}[Auto Install]${_AI_RST} ✗ Vẫn không chạy được '${cmd}'"
             fi
         fi
     else
-        echo -e "${_AI_R}[Auto Install]${_AI_RST} Không tìm thấy gói nào phù hợp cho '${_AI_W}${cmd}${_AI_RST}'"
+        echo -e "${_AI_R}[Auto Install]${_AI_RST} Không tìm thấy gói nào cho '${_AI_W}${cmd}${_AI_RST}'"
     fi
     return 127
+}
+
+# ── Chạy file theo extension (Smart Run) ──────────────────
+_run_file_by_ext_zsh() {
+    local filename="$1"
+    local ext="${filename##*.}"
+    case "$ext" in
+        py)   python "$filename";       return $? ;;
+        sh)   bash "$filename";         return $? ;;
+        js)   node "$filename";         return $? ;;
+        ts)   npx ts-node "$filename";  return $? ;;
+        php)  php "$filename";          return $? ;;
+        rb)   ruby "$filename";         return $? ;;
+        lua)  lua "$filename";          return $? ;;
+        pl)   perl "$filename";         return $? ;;
+        go)   go run "$filename";       return $? ;;
+        r|R)  Rscript "$filename";      return $? ;;
+        java) local cls="${filename%.java}"; javac "$filename" && java "$cls"; return $? ;;
+        c)    local out="${filename%.c}"; gcc "$filename" -o "$out" && "./$out"; return $? ;;
+        cpp)  local out="${filename%.cpp}"; g++ "$filename" -o "$out" && "./$out"; return $? ;;
+        rs)   local out="${filename%.rs}"; rustc "$filename" && "./$out"; return $? ;;
+        *)    return 1 ;;
+    esac
 }
 
 # ── command_not_found_handler: Smart Run + Auto Install ───
 command_not_found_handler() {
     local filename="$1"
-    local ext="${filename##*.}"
 
     # Smart Run: file tồn tại với đuôi được hỗ trợ
     if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
-        case "$ext" in
-            py)   python "$filename";       return $? ;;
-            sh)   bash "$filename";         return $? ;;
-            js)   node "$filename";         return $? ;;
-            ts)   npx ts-node "$filename";  return $? ;;
-            php)  php "$filename";          return $? ;;
-            rb)   ruby "$filename";         return $? ;;
-            lua)  lua "$filename";          return $? ;;
-            pl)   perl "$filename";         return $? ;;
-            go)   go run "$filename";       return $? ;;
-            r|R)  Rscript "$filename";      return $? ;;
-            java)
-                local cls="${filename%.java}"
-                javac "$filename" && java "$cls"; return $? ;;
-            c)
-                local out="${filename%.c}"
-                gcc "$filename" -o "$out" && "./$out"; return $? ;;
-            cpp)
-                local out="${filename%.cpp}"
-                g++ "$filename" -o "$out" && "./$out"; return $? ;;
-            rs)
-                local out="${filename%.rs}"
-                rustc "$filename" && "./$out"; return $? ;;
-        esac
+        _run_file_by_ext_zsh "$filename" && return $?
     fi
 
     # Auto Install: thử cài lệnh chưa có
     _auto_install "$@"
     return $?
 }
+
 # ══════════════════════════════════════════════════════════
 #  END SMART MODE
 # ══════════════════════════════════════════════════════════
