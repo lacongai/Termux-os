@@ -380,6 +380,7 @@ _auto_install() {
         done
         wait "$pid" 2>/dev/null
         printf "\r\033[2K"
+        # FIX 1: dùng _ret thay vì status (tránh lỗi zsh read-only variable)
         local _ret
         _ret=$(cat "$code_file" 2>/dev/null)
         rm -f "$log_file" "$code_file" 2>/dev/null
@@ -549,9 +550,6 @@ smart_run_cmd() {
 12line() {
     local marker="# SMART MODE (by Termux-OS)"
 
-    # ═══════════════════════════════════════════════════════
-    #  ZSH BLOCK
-    # ═══════════════════════════════════════════════════════
     if [ -f ~/.zshrc ]; then
         if grep -q "$marker" ~/.zshrc 2>/dev/null; then
             echo -e "${Y}[!] Smart Mode đã có trong ~/.zshrc — đang gỡ và cài lại...${RS}"
@@ -564,7 +562,6 @@ smart_run_cmd() {
 # SMART MODE (by Termux-OS)
 # ══════════════════════════════════════════════════════════
 
-# ── Load plugin highlight + autosuggest (nếu chưa có) ─────
 if [ -f "$HOME/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
     source "$HOME/.oh-my-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
 fi
@@ -572,7 +569,6 @@ if [ -f "$HOME/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlightin
     source "$HOME/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 fi
 
-# ── Màu unknown-token (chỉ gán khi là associative array) ──
 if (( ${+ZSH_HIGHLIGHT_STYLES} )) && [[ "${(t)ZSH_HIGHLIGHT_STYLES}" == *association* ]]; then
     ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=yellow,bold'
     ZSH_HIGHLIGHT_STYLES[path]='fg=cyan'
@@ -674,6 +670,7 @@ _auto_install() {
         done
         wait "$pid" 2>/dev/null
         printf "\r\033[2K"
+        # FIX 1: dùng _ret thay vì status (tránh lỗi zsh read-only variable)
         local _ret
         _ret=$(cat "$code_file" 2>/dev/null)
         rm -f "$log_file" "$code_file" 2>/dev/null
@@ -753,7 +750,6 @@ _auto_install() {
     return 127
 }
 
-# ── Chạy file theo extension (absolute path) ──────────────
 _run_file_by_ext_zsh() {
     local filename="$1"
     local abs_path
@@ -779,23 +775,20 @@ _run_file_by_ext_zsh() {
     esac
 }
 
-# ── FIXED: guard để không gọi auto install khi file tồn tại ──
+# FIX 3: guard để không gọi auto install khi file tồn tại
 command_not_found_handler() {
     local filename="$1"
 
-    # Nếu là file có extension hỗ trợ và tồn tại → chạy file, KHÔNG auto install
     if [[ "$filename" == *.* && "$filename" != *' '* && -f "$filename" ]]; then
         _run_file_by_ext_zsh "$filename"
         return $?
     fi
 
-    # Nếu tên có dấu chấm nhưng file không tồn tại → báo lỗi bình thường (không auto install)
     if [[ "$filename" == *.* ]]; then
         print -u2 "zsh: command not found: $filename"
         return 127
     fi
 
-    # Lệnh thật sự chưa cài → auto install
     _auto_install "$@"
     return $?
 }
@@ -808,9 +801,6 @@ ZSH_SMART_EOF
         echo -e "${Y}[!] Không tìm thấy ~/.zshrc${RS}"
     fi
 
-    # ═══════════════════════════════════════════════════════
-    #  BASH BLOCK
-    # ═══════════════════════════════════════════════════════
     if [ -f ~/.bashrc ]; then
         if grep -q "$marker" ~/.bashrc 2>/dev/null; then
             echo -e "${Y}[!] Smart Mode đã có trong ~/.bashrc — đang gỡ và cài lại...${RS}"
@@ -893,6 +883,7 @@ _auto_install() {
         done
         wait "$pid" 2>/dev/null
         printf "\r\033[2K"
+        # FIX 1: dùng _ret thay vì status
         local _ret
         _ret=$(cat "$code_file" 2>/dev/null)
         rm -f "$log_file" "$code_file" 2>/dev/null
@@ -997,7 +988,7 @@ _run_file_by_ext_bash() {
     esac
 }
 
-# ── FIXED: guard cho bash ─────────────────────────────────
+# FIX 3: guard cho bash
 command_not_found_handle() {
     local filename="$1"
 
